@@ -1,21 +1,21 @@
 param(
-    [string]$NgrokDomain = ""
+    [string]$NgrokDomain = "attentive-taylor-snoopy.ngrok-free.dev"
 )
 
 # ============================================================
-# MEMORA — START COMPLETO
+# MEMORA - START COMPLETO
 # ============================================================
 
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Cyan
-Write-Host "  MEMORA — Iniciando sistema completo" -ForegroundColor Cyan
+Write-Host "  MEMORA - Iniciando sistema completo" -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # ------------------------------------------------------------
-# PASSO 1 — Verifica .env
+# PASSO 1 - Verifica .env
 # ------------------------------------------------------------
-Write-Host "[1/5] Verificando configuracao..." -ForegroundColor Yellow
+Write-Host "[1/4] Verificando configuracao..." -ForegroundColor Yellow
 
 if (-not (Test-Path ".env")) {
     Write-Host "ERRO: .env nao encontrado." -ForegroundColor Red
@@ -46,13 +46,13 @@ if ($missing.Count -gt 0) {
     exit 1
 }
 
-Write-Host "  .env OK — variaveis obrigatorias presentes" -ForegroundColor Green
+Write-Host "  .env OK - variaveis obrigatorias presentes" -ForegroundColor Green
 
 # ------------------------------------------------------------
-# PASSO 2 — Migrations
+# PASSO 2 - Migrations
 # ------------------------------------------------------------
 Write-Host ""
-Write-Host "[2/5] Rodando migrations..." -ForegroundColor Yellow
+Write-Host "[2/4] Rodando migrations..." -ForegroundColor Yellow
 
 $migrationResult = python scripts/run_all_migrations.py 2>&1
 $migrationOutput = $migrationResult | Out-String
@@ -77,10 +77,10 @@ $migrationResult | ForEach-Object {
 Write-Host "  Migrations concluidas" -ForegroundColor Green
 
 # ------------------------------------------------------------
-# PASSO 3 — ngrok
+# PASSO 3 - ngrok
 # ------------------------------------------------------------
 Write-Host ""
-Write-Host "[3/5] Iniciando ngrok..." -ForegroundColor Yellow
+Write-Host "[3/4] Iniciando ngrok..." -ForegroundColor Yellow
 
 # Verifica se ngrok esta instalado
 if (-not (Get-Command ngrok -ErrorAction SilentlyContinue)) {
@@ -105,11 +105,11 @@ if ($NgrokDomain -eq "") {
         Write-Host ""
         Write-Host "  Nenhum dominio ngrok configurado." -ForegroundColor Yellow
         Write-Host "  Opcoes:" -ForegroundColor White
-        Write-Host "    A) Dominio estatico (recomendado — URL fixa):" -ForegroundColor White
-        Write-Host "       1. Acesse ngrok.com > Cloud Edge > Domains > New Domain" -ForegroundColor White
-        Write-Host "       2. Execute: .\start.ps1 -NgrokDomain seu-dominio.ngrok-free.app" -ForegroundColor White
+        Write-Host '    A) Dominio estatico (recomendado - URL fixa):' -ForegroundColor White
+        Write-Host '       1. Acesse ngrok.com, va em Cloud Edge, Domains, New Domain' -ForegroundColor White
+        Write-Host '       2. Execute: .\start.ps1 -NgrokDomain seu-dominio.ngrok-free.app' -ForegroundColor White
         Write-Host ""
-        Write-Host "    B) URL temporaria (muda a cada vez):" -ForegroundColor White
+        Write-Host '    B) URL temporaria (muda a cada vez):' -ForegroundColor White
         $useTemp = Read-Host "  Usar URL temporaria agora? (s/n)"
         if ($useTemp -ne "s") {
             Write-Host "Configure um dominio estatico e tente novamente." -ForegroundColor Yellow
@@ -164,12 +164,12 @@ $envContent | Set-Content ".env"
 Write-Host "  CORS atualizado no .env" -ForegroundColor Gray
 
 # ------------------------------------------------------------
-# PASSO 4 — Backend
+# PASSO 4 - Backend
 # ------------------------------------------------------------
 Write-Host ""
-Write-Host "[4/5] Iniciando backend..." -ForegroundColor Yellow
+Write-Host "[4/4] Iniciando backend..." -ForegroundColor Yellow
 
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD'; Write-Host 'MEMORA BACKEND' -ForegroundColor Cyan; uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD'; Write-Host 'MEMORA BACKEND' -ForegroundColor Cyan; python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
 # Aguarda backend responder
 $attempts = 0
@@ -178,7 +178,7 @@ do {
     Start-Sleep -Seconds 2
     $attempts++
     try {
-        Invoke-WebRequest -Uri "http://localhost:8000/api/health" -TimeoutSec 2 -ErrorAction Stop | Out-Null
+        Invoke-WebRequest -Uri "http://localhost:8000/api/health" -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop | Out-Null
         $ready = $true
     } catch {}
 } while (-not $ready -and $attempts -lt 20)
@@ -191,9 +191,6 @@ if (-not $ready) {
 
 Write-Host "  Backend rodando em http://localhost:8000" -ForegroundColor Green
 
-# ------------------------------------------------------------
-# PASSO 5 — Resumo final
-# ------------------------------------------------------------
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Green
 Write-Host "  MEMORA RODANDO" -ForegroundColor Green
@@ -203,18 +200,12 @@ Write-Host "  Backend local:   http://localhost:8000" -ForegroundColor White
 Write-Host "  Backend publico: $NgrokUrl" -ForegroundColor White
 Write-Host "  Health check:    http://localhost:8000/api/health" -ForegroundColor White
 Write-Host ""
-
-# Verifica se NEXT_PUBLIC_API_URL esta configurado na Vercel
-Write-Host "  VERCEL — Confirme que esta variavel esta configurada:" -ForegroundColor Yellow
+Write-Host "  VERCEL - Confirme que esta variavel esta configurada:" -ForegroundColor Yellow
 Write-Host "  NEXT_PUBLIC_API_URL = $NgrokUrl" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Se mudou a URL do ngrok:" -ForegroundColor Yellow
-Write-Host "  vercel.com > projeto > Settings > Environment Variables" -ForegroundColor White
+Write-Host '  vercel.com, projeto, Settings, Environment Variables' -ForegroundColor White
 Write-Host "  Atualizar NEXT_PUBLIC_API_URL e fazer Redeploy" -ForegroundColor White
 Write-Host ""
 Write-Host "================================================" -ForegroundColor Green
 Write-Host ""
-
-# Abre o browser
-Start-Sleep -Seconds 1
-Start-Process "http://localhost:8000/api/health"

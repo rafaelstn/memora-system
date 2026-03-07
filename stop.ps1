@@ -1,76 +1,69 @@
-$ErrorActionPreference = "Stop"
+# ============================================================
+# MEMORA - STOP (encerra backend, ngrok e processos orphans)
+# ============================================================
 
-# --- Funcoes auxiliares ------------------------------------------------------
-function Write-Info  { param([string]$Msg) Write-Host "[INFO]  $Msg" -ForegroundColor Cyan }
-function Write-Ok    { param([string]$Msg) Write-Host "[OK]    $Msg" -ForegroundColor Green }
-function Write-Warn  { param([string]$Msg) Write-Host "[WARN]  $Msg" -ForegroundColor Yellow }
-function Write-Fail  { param([string]$Msg) Write-Host "[ERRO]  $Msg" -ForegroundColor Red; exit 1 }
+Write-Host ""
+Write-Host "================================================" -ForegroundColor Cyan
+Write-Host "  MEMORA - Encerrando servicos" -ForegroundColor Cyan
+Write-Host "================================================" -ForegroundColor Cyan
+Write-Host ""
 
-$RootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-Set-Location $RootDir
+$stopped = 0
 
-# --- docker-compose command --------------------------------------------------
-$dcCmd = $null
-try {
-    $null = docker compose version 2>$null
-    if ($LASTEXITCODE -eq 0) { $dcCmd = "docker compose" }
-} catch {}
-if (-not $dcCmd) {
-    try {
-        $null = docker-compose version 2>$null
-        if ($LASTEXITCODE -eq 0) { $dcCmd = "docker-compose" }
-    } catch {}
-}
-if (-not $dcCmd) {
-    Write-Fail "docker-compose nao encontrado."
-}
+# --- 1. Encerrar uvicorn (python) na porta 8000 ---------------
+$pids8000 = netstat -ano | Select-String ":8000\s.*LISTENING" | ForEach-Object {
+    ($_ -split "\s+")[-1]
+} | Sort-Object -Unique
 
-# --- 1. Verificar containers ------------------------------------------------
-$running = 0
-try {
-    $containers = Invoke-Expression "$dcCmd ps --format '{{.Name}}'" 2>$null
-    if ($containers) {
-        $running = ($containers | Select-String "memora" | Measure-Object).Count
+if ($pids8000) {
+    foreach ($pid in $pids8000) {
+        try {
+            $proc = Get-Process -Id $pid -ErrorAction Stop
+            Write-Host "  Encerrando $($proc.ProcessName) (PID $pid) na porta 8000..." -ForegroundColor Yellow
+            Stop-Process -Id $pid -Force -ErrorAction Stop
+            $stopped++
+        } catch {}
     }
-} catch {}
-
-if ($running -eq 0) {
-    Write-Host ""
-    Write-Info "Nenhum servico Memora rodando."
-    Write-Host ""
-    exit 0
+    Write-Host "  Backend encerrado" -ForegroundColor Green
+} else {
+    Write-Host "  Backend nao estava rodando" -ForegroundColor Gray
 }
 
-Write-Info "$running servico(s) Memora rodando"
+# --- 2. Encerrar ngrok -----------------------------------------
+$ngrokProcs = Get-Process -Name "ngrok" -ErrorAction SilentlyContinue
+if ($ngrokProcs) {
+    foreach ($proc in $ngrokProcs) {
+        Write-Host "  Encerrando ngrok (PID $($proc.Id))..." -ForegroundColor Yellow
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        $stopped++
+    }
+    Write-Host "  ngrok encerrado" -ForegroundColor Green
+} else {
+    Write-Host "  ngrok nao estava rodando" -ForegroundColor Gray
+}
+
+# --- 3. Encerrar janelas PowerShell do backend (MEMORA BACKEND) -
+$psProcs = Get-Process -Name "powershell", "pwsh" -ErrorAction SilentlyContinue | Where-Object {
+    $_.MainWindowTitle -match "MEMORA"
+}
+if ($psProcs) {
+    foreach ($proc in $psProcs) {
+        Write-Host "  Encerrando janela PowerShell (PID $($proc.Id))..." -ForegroundColor Yellow
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+        $stopped++
+    }
+}
+
+# --- Resumo ----------------------------------------------------
 Write-Host ""
-
-# --- 2. Encerrar servicos ---------------------------------------------------
-foreach ($service in @("memora-web", "memora-api")) {
-    try {
-        $running_containers = docker ps --format '{{.Names}}' 2>$null
-        if ($running_containers -and ($running_containers | Select-String $service)) {
-            Write-Info "Encerrando $service..."
-            docker stop $service 2>$null | Out-Null
-        }
-    } catch {}
-}
-
-Write-Info "Removendo containers..."
-try {
-    Invoke-Expression "$dcCmd down"
-} catch {
-    Write-Warn "Erro ao remover containers: $_"
-}
-
+Write-Host "================================================" -ForegroundColor Green
+Write-Host "  MEMORA ENCERRADO" -ForegroundColor Green
+Write-Host "================================================" -ForegroundColor Green
 Write-Host ""
-
-# --- 3. Painel final --------------------------------------------------------
-Write-Host "  ================================================" -ForegroundColor Green
-Write-Host "  |         MEMORA -- ENCERRADO                   |" -ForegroundColor Green
-Write-Host "  ================================================" -ForegroundColor Green
-Write-Host "  |  Todos os servicos encerrados                 |" -ForegroundColor Green
-Write-Host "  |  Banco Supabase: sem alteracao (remoto)       |" -ForegroundColor Green
-Write-Host "  ================================================" -ForegroundColor Green
-Write-Host "  |  Para subir novamente: .\start.ps1            |" -ForegroundColor Green
-Write-Host "  ================================================" -ForegroundColor Green
+if ($stopped -eq 0) {
+    Write-Host "  Nenhum servico estava rodando" -ForegroundColor Gray
+} else {
+    Write-Host "  $stopped processo(s) encerrado(s)" -ForegroundColor White
+}
+Write-Host "  Para subir novamente: .\start.ps1" -ForegroundColor White
 Write-Host ""

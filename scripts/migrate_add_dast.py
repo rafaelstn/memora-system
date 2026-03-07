@@ -7,9 +7,9 @@ def migrate():
     with engine.begin() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS dast_scans (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                org_id UUID NOT NULL REFERENCES organizations(id),
-                requested_by UUID NOT NULL REFERENCES users(id),
+                id VARCHAR(36) PRIMARY KEY,
+                org_id VARCHAR(36) NOT NULL REFERENCES organizations(id),
+                requested_by VARCHAR(36) NOT NULL REFERENCES users(id),
                 target_url VARCHAR NOT NULL,
                 target_env VARCHAR NOT NULL DEFAULT 'development',
                 status VARCHAR NOT NULL DEFAULT 'pending',
@@ -27,9 +27,9 @@ def migrate():
                 ON dast_scans(org_id);
 
             CREATE TABLE IF NOT EXISTS dast_findings (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                scan_id UUID NOT NULL REFERENCES dast_scans(id) ON DELETE CASCADE,
-                org_id UUID NOT NULL REFERENCES organizations(id),
+                id VARCHAR(36) PRIMARY KEY,
+                scan_id VARCHAR(36) NOT NULL REFERENCES dast_scans(id) ON DELETE CASCADE,
+                org_id VARCHAR(36) NOT NULL REFERENCES organizations(id),
                 probe_type VARCHAR NOT NULL,
                 severity VARCHAR NOT NULL,
                 title VARCHAR NOT NULL,

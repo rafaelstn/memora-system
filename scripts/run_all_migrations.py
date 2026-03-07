@@ -20,6 +20,10 @@ from dotenv import load_dotenv
 SCRIPTS_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPTS_DIR.parent
 
+# Adiciona raiz do projeto ao sys.path para que scripts possam importar 'app'
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 load_dotenv(ROOT_DIR / ".env")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -88,6 +92,8 @@ def run_script(script_path: Path) -> bool:
         spec.loader.exec_module(module)
         if hasattr(module, "run"):
             module.run()
+        elif hasattr(module, "migrate"):
+            module.migrate()
         return True
     except SystemExit:
         # Alguns scripts chamam sys.exit() em caso de erro
