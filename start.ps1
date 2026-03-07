@@ -127,7 +127,7 @@ if ($NgrokDomain -ne "") {
 
 # Inicia ngrok em background
 if ($NgrokDomain -ne "") {
-    Start-Process -FilePath "ngrok" -ArgumentList "http", "--domain=$NgrokDomain", "8000" -WindowStyle Hidden
+    Start-Process -FilePath "ngrok" -ArgumentList "http", "--url=$NgrokDomain", "8000" -WindowStyle Hidden
     $NgrokUrl = "https://$NgrokDomain"
 } else {
     Start-Process -FilePath "ngrok" -ArgumentList "http", "8000" -WindowStyle Hidden
@@ -149,9 +149,9 @@ Write-Host "  ngrok iniciado: $NgrokUrl" -ForegroundColor Green
 $envContent = Get-Content ".env" -Raw
 
 if ($envContent -match "CORS_ORIGINS=") {
-    $envContent = $envContent -replace "CORS_ORIGINS=.*", "CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,$NgrokUrl"
+    $envContent = $envContent -replace "CORS_ORIGINS=.*", "CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,$NgrokUrl,https://memora-system.vercel.app"
 } else {
-    $envContent += "`nCORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,$NgrokUrl"
+    $envContent += "`nCORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,$NgrokUrl,https://memora-system.vercel.app"
 }
 
 if ($envContent -match "APP_URL=") {
@@ -169,7 +169,7 @@ Write-Host "  CORS atualizado no .env" -ForegroundColor Gray
 Write-Host ""
 Write-Host "[4/4] Iniciando backend..." -ForegroundColor Yellow
 
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD'; Write-Host 'MEMORA BACKEND' -ForegroundColor Cyan; python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+Start-Process -FilePath "python" -ArgumentList "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload" -WindowStyle Hidden
 
 # Aguarda backend responder
 $attempts = 0

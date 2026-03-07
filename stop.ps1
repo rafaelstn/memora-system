@@ -11,16 +11,16 @@ Write-Host ""
 $stopped = 0
 
 # --- 1. Encerrar uvicorn (python) na porta 8000 ---------------
-$pids8000 = netstat -ano | Select-String ":8000\s.*LISTENING" | ForEach-Object {
+$procIds8000 = netstat -ano | Select-String ":8000\s.*LISTENING" | ForEach-Object {
     ($_ -split "\s+")[-1]
 } | Sort-Object -Unique
 
-if ($pids8000) {
-    foreach ($pid in $pids8000) {
+if ($procIds8000) {
+    foreach ($procId in $procIds8000) {
         try {
-            $proc = Get-Process -Id $pid -ErrorAction Stop
-            Write-Host "  Encerrando $($proc.ProcessName) (PID $pid) na porta 8000..." -ForegroundColor Yellow
-            Stop-Process -Id $pid -Force -ErrorAction Stop
+            $proc = Get-Process -Id $procId -ErrorAction Stop
+            Write-Host "  Encerrando $($proc.ProcessName) (PID $procId) na porta 8000..." -ForegroundColor Yellow
+            Stop-Process -Id $procId -Force -ErrorAction Stop
             $stopped++
         } catch {}
     }
