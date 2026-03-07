@@ -24,7 +24,7 @@ export async function signUp(
 
   const res = await fetch(`${API_BASE}/api/auth/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
     body: JSON.stringify({
       name,
       email,
@@ -94,7 +94,7 @@ export async function fetchUserProfile(): Promise<{
   if (!token) return null;
 
   const res = await fetch(`${API_BASE}/api/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, "ngrok-skip-browser-warning": "true" },
   });
   if (!res.ok) return null;
   return res.json();
