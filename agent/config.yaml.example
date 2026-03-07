@@ -1,0 +1,32 @@
+# Memora Agent — Configuracao
+# Copie este arquivo para config.yaml e preencha os valores.
+
+# URL do servidor Memora
+memora_url: https://seu-memora.com
+
+# Token do projeto (gerado no painel do Memora)
+project_token: seu-token-aqui
+
+# Fontes de log para monitorar
+sources:
+  - type: file
+    path: /var/log/myapp/error.log
+    format: auto  # auto | json | python | loguru | nginx | plain
+
+  # Exemplo: log do nginx
+  # - type: file
+  #   path: /var/log/nginx/error.log
+  #   format: nginx
+
+  # Exemplo: log em JSON
+  # - type: file
+  #   path: /var/log/myapp/structured.log
+  #   format: json
+
+# Filtros
+filters:
+  min_level: warning  # debug | info | warning | error | critical
+
+# Envio em lotes
+batch_size: 100        # envia em lotes de ate 100 logs
+flush_interval: 5      # envia a cada 5 segundos (se houver dados)

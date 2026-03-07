@@ -1,0 +1,8 @@
+# MCP tools depend on the main Memora API
+# Install from the root requirements.txt
+# These are the additional packages if running standalone:
+fastapi>=0.115.0
+sqlalchemy>=2.0
+pgvector>=0.3.0
+openai>=1.0
+tiktoken>=0.7.0

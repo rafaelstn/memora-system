@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+
+# Secrets and keys
+*.pem
+*.key
+credentials.json
+agent/config.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Docker
+pgdata/
+
+# Node (frontend has its own .gitignore, but just in case)
+node_modules/
+.next/
+
+# ngrok
+.ngrok-domain
+
+# Claude Code
+.claude/
