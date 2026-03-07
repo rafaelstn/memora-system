@@ -14,6 +14,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
       ...authHeaders,
       ...options?.headers,
     },
@@ -106,6 +107,7 @@ export async function askQuestionStream(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
       ...authHeaders,
     },
     body: JSON.stringify(body),
@@ -184,6 +186,7 @@ export async function ingestRepositoryStream(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
       ...authHeaders,
     },
     body: JSON.stringify({ repo_path: repoPath, repo_name: repoName }),
@@ -681,7 +684,7 @@ export async function uploadKnowledgeDocument(file: File, repoId?: string) {
   const qs = repoId ? `?repo_id=${repoId}` : "";
   const res = await fetch(`${API_BASE}/api/knowledge/documents${qs}`, {
     method: "POST",
-    headers: authHeaders,
+    headers: { "ngrok-skip-browser-warning": "true", ...authHeaders },
     body: formData,
   });
   if (!res.ok) {
@@ -918,7 +921,7 @@ export async function generateCodeStream(
   const authHeaders = await getAuthHeaders();
   const res = await fetch(`${API_BASE}/api/codegen/generate`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders },
+    headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true", ...authHeaders },
     body: JSON.stringify(body),
   });
 
@@ -976,7 +979,7 @@ export async function revokeMcpToken() {
 
 export async function testMcpHealth(token: string) {
   const res = await fetch(`${API_BASE}/mcp/health`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, "ngrok-skip-browser-warning": "true" },
   });
   if (!res.ok) throw new Error(`MCP error: ${res.status}`);
   return res.json() as Promise<McpHealth>;
@@ -1305,7 +1308,7 @@ export async function getHealthAdmin() {
 export async function downloadPDF(endpoint: string, filename: string): Promise<void> {
   const authHeaders = await getAuthHeaders();
   const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: { ...authHeaders },
+    headers: { "ngrok-skip-browser-warning": "true", ...authHeaders },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
