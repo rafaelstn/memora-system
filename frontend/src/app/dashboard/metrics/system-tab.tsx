@@ -144,7 +144,7 @@ export default function SystemTab() {
 
       {/* Overall status banner */}
       <div className={cn(
-        "rounded-xl border p-4 flex items-center gap-3",
+        "rounded-xl border p-5 flex items-center gap-3",
         statusBorder(overallStatus),
         statusBg(overallStatus),
       )}>
@@ -153,9 +153,9 @@ export default function SystemTab() {
       </div>
 
       {/* Grid of cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Database */}
-        <div className={cn("rounded-xl border p-4 space-y-1", statusBorder(data.database.status), statusBg(data.database.status))}>
+        <div className={cn("rounded-xl border p-6 space-y-2", statusBorder(data.database.status), statusBg(data.database.status))}>
           <div className="flex items-center gap-2">
             {statusIcon(data.database.status)}
             <span className="font-semibold">Banco de Dados</span>
@@ -167,7 +167,7 @@ export default function SystemTab() {
         </div>
 
         {/* Embeddings */}
-        <div className={cn("rounded-xl border p-4 space-y-1", statusBorder(data.embeddings.status), statusBg(data.embeddings.status))}>
+        <div className={cn("rounded-xl border p-6 space-y-2", statusBorder(data.embeddings.status), statusBg(data.embeddings.status))}>
           <div className="flex items-center gap-2">
             {statusIcon(data.embeddings.status)}
             <span className="font-semibold">Embeddings</span>
@@ -180,7 +180,7 @@ export default function SystemTab() {
 
         {/* LLM Providers */}
         {data.llm_providers.map((p: HealthLLMProvider, i: number) => (
-          <div key={i} className={cn("rounded-xl border p-4 space-y-1", statusBorder(p.status), statusBg(p.status))}>
+          <div key={i} className={cn("rounded-xl border p-6 space-y-2", statusBorder(p.status), statusBg(p.status))}>
             <div className="flex items-center gap-2">
               {statusIcon(p.status)}
               <span className="font-semibold">
@@ -191,7 +191,7 @@ export default function SystemTab() {
           </div>
         ))}
         {data.llm_providers.length === 0 && (
-          <div className={cn("rounded-xl border p-4 space-y-1", statusBorder("not_configured"), statusBg("not_configured"))}>
+          <div className={cn("rounded-xl border p-6 space-y-2", statusBorder("not_configured"), statusBg("not_configured"))}>
             <div className="flex items-center gap-2">
               {statusIcon("not_configured")}
               <span className="font-semibold">IA — Nenhum provedor</span>
@@ -201,7 +201,7 @@ export default function SystemTab() {
         )}
 
         {/* GitHub Webhook */}
-        <div className={cn("rounded-xl border p-4 space-y-1", statusBorder(data.github_webhook.status), statusBg(data.github_webhook.status))}>
+        <div className={cn("rounded-xl border p-6 space-y-2", statusBorder(data.github_webhook.status), statusBg(data.github_webhook.status))}>
           <div className="flex items-center gap-2">
             {statusIcon(data.github_webhook.status)}
             <span className="font-semibold">GitHub Webhook</span>
@@ -215,7 +215,7 @@ export default function SystemTab() {
         </div>
 
         {/* Background Workers */}
-        <div className={cn("rounded-xl border p-4 space-y-1", statusBorder(data.background_workers.status), statusBg(data.background_workers.status))}>
+        <div className={cn("rounded-xl border p-6 space-y-2", statusBorder(data.background_workers.status), statusBg(data.background_workers.status))}>
           <div className="flex items-center gap-2">
             {statusIcon(data.background_workers.status)}
             <span className="font-semibold">Workers em Background</span>
@@ -226,7 +226,7 @@ export default function SystemTab() {
         </div>
 
         {/* Email */}
-        <div className={cn("rounded-xl border p-4 space-y-1", statusBorder(data.email.status), statusBg(data.email.status))}>
+        <div className={cn("rounded-xl border p-6 space-y-2", statusBorder(data.email.status), statusBg(data.email.status))}>
           <div className="flex items-center gap-2">
             {statusIcon(data.email.status)}
             <span className="font-semibold">Email</span>
@@ -241,7 +241,7 @@ export default function SystemTab() {
         </div>
 
         {/* Storage */}
-        <div className={cn("rounded-xl border p-4 space-y-1", statusBorder("ok"), statusBg("ok"))}>
+        <div className={cn("rounded-xl border p-6 space-y-2", statusBorder("ok"), statusBg("ok"))}>
           <div className="flex items-center gap-2">
             <HardDrive size={18} className="text-accent" />
             <span className="font-semibold">Repositorios</span>

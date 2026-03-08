@@ -129,17 +129,17 @@ function AuditsSubTab() {
       {/* Stats */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-xl border border-border bg-card-bg p-6">
             <p className="text-sm text-muted">Score medio</p>
             <p className={cn("text-3xl font-bold", stats.avg_score != null && stats.avg_score >= 80 ? "text-green-500" : stats.avg_score != null && stats.avg_score >= 60 ? "text-yellow-500" : "text-red-500")}>
               {stats.avg_score ?? "—"}
             </p>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-xl border border-border bg-card-bg p-6">
             <p className="text-sm text-muted">Scans recentes</p>
             <p className="text-3xl font-bold">{stats.recent_scans.length}</p>
           </div>
-          <div className="rounded-lg border border-border p-4">
+          <div className="rounded-xl border border-border bg-card-bg p-6">
             <p className="text-sm text-muted">Findings criticos</p>
             <p className="text-3xl font-bold text-red-500">{stats.total_critical_findings}</p>
           </div>
@@ -147,7 +147,7 @@ function AuditsSubTab() {
       )}
 
       {/* New scan */}
-      <div className="rounded-lg border border-border p-4">
+      <div className="rounded-xl border border-border bg-card-bg p-6">
         <h3 className="text-sm font-semibold mb-3">Nova Auditoria</h3>
         <div className="flex gap-3">
           <input

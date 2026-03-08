@@ -40,7 +40,8 @@ function MetricsContent() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-5 md:p-8 space-y-6">
+      {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-border">
         {TABS.map((tab) => (
           <button
@@ -59,6 +60,7 @@ function MetricsContent() {
         ))}
       </div>
 
+      {/* Tab content */}
       {activeTab === "usage" && <UsageTab />}
       {activeTab === "security" && <SecurityTab />}
       {activeTab === "executive" && <ExecutiveTab />}

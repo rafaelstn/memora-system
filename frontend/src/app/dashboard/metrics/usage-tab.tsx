@@ -139,7 +139,7 @@ export default function UsageTab() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {summaryCards.map((card) => (
-          <div key={card.label} className="rounded-xl border border-border bg-card-bg p-5">
+          <div key={card.label} className="rounded-xl border border-border bg-card-bg p-6">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 rounded-lg bg-accent-surface">
                 <card.icon size={18} className="text-accent" />

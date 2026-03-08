@@ -136,7 +136,7 @@ function MetricCard({
   color: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border p-4">
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card-bg p-6">
       <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>
         {icon}
       </div>
@@ -216,12 +216,12 @@ export default function ExecutiveDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Visao Executiva</h1>
+          <h1 className="text-2xl font-bold mb-1">Visao Executiva</h1>
           <p className="text-sm text-muted">
             Panorama consolidado de todos os sistemas
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => handleGenerate("week")}
             disabled={generating}
@@ -353,11 +353,13 @@ export default function ExecutiveDashboardPage() {
           </div>
         </div>
       ) : (
-        <div className="rounded-lg border border-border p-8 text-center">
-          <Activity className="mx-auto mb-3 text-muted" size={32} />
-          <p className="text-sm text-muted">
-            Nenhum snapshot gerado ainda. Clique em &quot;Gerar Semanal&quot; para criar o
-            primeiro relatorio.
+        <div className="rounded-xl border border-border bg-card-bg p-12 text-center">
+          <Activity className="mx-auto mb-4 text-muted" size={36} />
+          <p className="text-sm text-muted mb-1">
+            Nenhum snapshot gerado ainda.
+          </p>
+          <p className="text-xs text-muted">
+            Clique em &quot;Gerar Semanal&quot; para criar o primeiro relatorio.
           </p>
         </div>
       )}
@@ -365,7 +367,7 @@ export default function ExecutiveDashboardPage() {
       {/* History toggle */}
       <button
         onClick={loadHistory}
-        className="flex items-center gap-2 text-sm text-muted hover:text-foreground"
+        className="flex items-center gap-2 text-sm text-muted hover:text-foreground mt-2"
       >
         {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         Historico de Snapshots

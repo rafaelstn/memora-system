@@ -5,13 +5,13 @@ import { ChatProvider } from "@/lib/chat-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Memora — Inteligência Técnica Operacional",
+  title: "Memora — O sistema que se explica sozinho",
   description:
-    "Assistente técnico interno que aprende o seu codebase e responde em português",
+    "Suporte responde sem acionar o dev. Erros detectados antes do cliente reclamar. Conhecimento tecnico que nunca vai embora.",
   openGraph: {
-    title: "Memora — Inteligência Técnica Operacional",
+    title: "Memora — O sistema que se explica sozinho",
     description:
-      "Assistente técnico interno que aprende o seu codebase e responde em português",
+      "Suporte responde sem acionar o dev. Erros detectados antes do cliente reclamar. Conhecimento tecnico que nunca vai embora.",
     type: "website",
   },
   icons: {
