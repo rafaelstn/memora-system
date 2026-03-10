@@ -13,7 +13,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       `connect-src 'self' ${apiUrl}`,
       "img-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
