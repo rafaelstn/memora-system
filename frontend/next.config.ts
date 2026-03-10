@@ -14,7 +14,7 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      `connect-src 'self' ${apiUrl}`,
+      `connect-src 'self' ${apiUrl} https://*.ngrok-free.dev https://*.ngrok.io`,
       "img-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",
