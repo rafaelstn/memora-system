@@ -11,6 +11,7 @@ class Conversation(Base):
 
     id = Column(String(36), primary_key=True)
     org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    product_id = Column(String(36), ForeignKey("products.id"), nullable=True, index=True)
     repo_name = Column(String(255), nullable=False, index=True)
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(500), nullable=False)
@@ -40,6 +41,7 @@ class Invite(Base):
     token = Column(String(255), unique=True, nullable=False, index=True)
     role = Column(String(20), nullable=False)
     email = Column(String(255))
+    product_id = Column(String(36), nullable=True)
     created_by = Column(String(36), ForeignKey("users.id"))
     used_by = Column(String(36), ForeignKey("users.id"))
     status = Column(String(20), nullable=False, default="pending")

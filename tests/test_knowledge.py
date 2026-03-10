@@ -76,16 +76,18 @@ def test_delete_adr(admin_client):
 
 def test_delete_adr_not_found(admin_client):
     """DELETE /api/knowledge/adrs/{id} returns 404 if not found."""
-    from app.api.deps import get_session
+    from app.api.deps import get_data_session, get_session
     db = _mock_knowledge_db()
     db.execute.return_value.rowcount = 0
     app.dependency_overrides[get_session] = lambda: db
+    app.dependency_overrides[get_data_session] = lambda: db
     try:
         resp = admin_client.delete("/api/knowledge/adrs/nonexistent")
         assert resp.status_code == 404
     finally:
         from tests.conftest import _mock_session
         app.dependency_overrides[get_session] = _mock_session
+        app.dependency_overrides[get_data_session] = _mock_session
 
 
 # --- GET /api/knowledge/search ---

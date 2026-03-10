@@ -3,8 +3,9 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_current_user, get_session
+from app.api.deps import get_current_product, get_current_user, get_data_session, get_session
 from app.main import app
+from app.models.product import Product
 from app.models.user import User
 
 
@@ -21,6 +22,16 @@ def _fake_user(role: str = "admin") -> User:
     return user
 
 
+def _fake_product() -> Product:
+    product = MagicMock(spec=Product)
+    product.id = "prod-test-001"
+    product.org_id = "org-test-001"
+    product.name = "Produto Principal"
+    product.description = "Produto padrao de teste"
+    product.is_active = True
+    return product
+
+
 def _mock_session() -> MagicMock:
     """Mock DB session with safe defaults for ORM queries."""
     session = MagicMock()
@@ -34,6 +45,8 @@ def admin_client():
     fake = _fake_user("admin")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -43,6 +56,8 @@ def dev_client():
     fake = _fake_user("dev")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -52,6 +67,8 @@ def suporte_client():
     fake = _fake_user("suporte")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 

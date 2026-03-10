@@ -1,164 +1,80 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  AlertCircle,
   MessageSquare,
   Shield,
   Brain,
   ArrowRight,
-  ChevronRight,
   Eye,
-  FileSearch,
-  Code2,
-  BookOpen,
   Zap,
   Clock,
-  Users,
-  TrendingDown,
-  DollarSign,
+  ShieldCheck,
+  Database,
+  GitBranch,
+  Settings,
+  BarChart3,
+  Check,
+  Crown,
   Building2,
-  Rocket,
-  Target,
-  CheckCircle2,
+  Sparkles,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-function ChatMockup() {
-  return (
-    <div className="w-full max-w-md rounded-2xl border border-border bg-card-bg overflow-hidden" style={{ boxShadow: "var(--shadow-lg)" }}>
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3 bg-sidebar-bg">
-        <div className="h-3 w-3 rounded-full bg-red-400" />
-        <div className="h-3 w-3 rounded-full bg-yellow-400" />
-        <div className="h-3 w-3 rounded-full bg-green-400" />
-        <span className="ml-2 text-xs text-muted">
-          Memora Chat
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-4 p-5">
-        <div className="flex items-start gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-white text-sm font-bold">
-            U
-          </div>
-          <div className="rounded-xl bg-hover px-4 py-2.5 text-sm text-foreground">
-            Onde fica a logica de calculo de frete?
-          </div>
-        </div>
-
-        <div className="flex items-start gap-3">
-          <Image src="/logo.png" alt="Memora" width={32} height={32} className="h-8 w-8 shrink-0 rounded-full" />
-          <div className="flex flex-col gap-2 rounded-xl bg-hover px-4 py-2.5 text-sm text-foreground">
-            <p>
-              A logica de frete esta em{" "}
-              <code className="rounded-md bg-accent-surface px-1.5 py-0.5 text-xs font-mono text-accent-text">
-                src/services/shipping.ts
-              </code>
-            </p>
-            <p>
-              Ela calcula o valor com base na zona de entrega e peso do pacote.
-              Foi alterada pela ultima vez em 12/fev por @carlos para incluir
-              a tabela de zonas atualizada.
-            </p>
-            <p className="text-muted text-xs">
-              Fonte: codigo + historico de alteracoes
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProblemCard({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-card-bg p-6 flex flex-col gap-3 hover:border-danger/30 transition-colors" style={{ boxShadow: "var(--shadow-sm)" }}>
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-danger-surface">
-        <AlertCircle className="h-5 w-5 text-danger" />
-      </div>
-      <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-      <p className="text-sm text-muted leading-relaxed">
-        {description}
-      </p>
-    </div>
-  );
-}
 
 function ModuleCard({
   icon: Icon,
   title,
   description,
-  metric,
 }: {
   icon: React.ElementType;
   title: string;
   description: string;
-  metric: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card-bg p-6 flex flex-col gap-3 hover:border-accent/30 transition-colors" style={{ boxShadow: "var(--shadow-sm)" }}>
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-surface">
-        <Icon className="h-5 w-5 text-accent" />
+    <div className="group relative rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 backdrop-blur-sm transition-all duration-300 hover:border-white/[0.15] hover:bg-white/[0.06]">
+      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/[0.05] to-purple-500/[0.05] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="relative flex flex-col gap-4">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 ring-1 ring-white/[0.08]">
+          <Icon className="h-5 w-5 text-indigo-300" />
+        </div>
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <p className="text-sm leading-relaxed text-slate-400">{description}</p>
       </div>
-      <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-      <p className="text-sm text-muted leading-relaxed">
-        {description}
-      </p>
-      <p className="text-sm font-semibold text-accent mt-auto pt-2">
-        {metric}
-      </p>
     </div>
   );
 }
 
 function StepCard({
   number,
+  icon: Icon,
   title,
   description,
 }: {
   number: number;
+  icon: React.ElementType;
   title: string;
   description: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-4 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-white text-xl font-bold" style={{ boxShadow: "var(--shadow-md)" }}>
-        {number}
+    <div className="flex flex-col items-center gap-5 text-center">
+      <div className="relative">
+        <div className="absolute -inset-3 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 blur-lg" />
+        <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25">
+          <Icon className="h-7 w-7" />
+        </div>
+        <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-900">
+          {number}
+        </span>
       </div>
-      <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-      <p className="text-sm text-muted leading-relaxed max-w-xs">
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <p className="max-w-xs text-sm leading-relaxed text-slate-400">
         {description}
       </p>
     </div>
   );
 }
 
-function ROICard({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: React.ElementType;
-  value: string;
-  label: string;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-3 text-center p-6">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-surface">
-        <Icon className="h-6 w-6 text-accent" />
-      </div>
-      <span className="text-3xl font-bold text-foreground">{value}</span>
-      <span className="text-sm text-muted">{label}</span>
-    </div>
-  );
-}
-
-function AudienceCard({
+function BenefitCard({
   icon: Icon,
   title,
   description,
@@ -168,317 +84,440 @@ function AudienceCard({
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card-bg p-6 flex flex-col gap-3 hover:border-accent/30 transition-colors" style={{ boxShadow: "var(--shadow-sm)" }}>
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-surface">
-        <Icon className="h-5 w-5 text-accent" />
+    <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 text-center backdrop-blur-sm">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 ring-1 ring-white/[0.08]">
+        <Icon className="h-6 w-6 text-indigo-300" />
       </div>
-      <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-      <p className="text-sm text-muted leading-relaxed">
-        {description}
-      </p>
+      <h3 className="text-lg font-semibold text-white">{title}</h3>
+      <p className="text-sm leading-relaxed text-slate-400">{description}</p>
     </div>
   );
 }
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-[#0b0f1a] text-slate-200 overflow-hidden">
+      {/* Navbar */}
+      <nav className="relative z-10 border-b border-white/[0.06]">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="Memora"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-lg"
+            />
+            <span className="text-lg font-bold tracking-tight text-white">
+              Memora
+            </span>
+          </div>
+          <div className="flex items-center gap-6">
+            <Link
+              href="#precos"
+              className="text-sm text-slate-400 transition-colors hover:text-white"
+            >
+              Precos
+            </Link>
+            <Link
+              href="/auth/signin"
+              className="rounded-lg bg-white/[0.08] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.15]"
+            >
+              Entrar
+            </Link>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="mx-auto max-w-6xl px-6 py-24 md:py-32">
-          <div className="flex flex-col items-center gap-12 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-1 flex-col gap-6 md:max-w-xl">
-              <span className="inline-flex w-fit items-center rounded-full border border-accent/30 bg-accent-surface px-3 py-1.5 text-xs font-medium text-accent-text">
-                Inteligencia Tecnica Operacional
+      <section className="relative">
+        {/* Gradient orbs */}
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-br from-indigo-600/20 via-purple-600/10 to-transparent blur-3xl" />
+        <div className="pointer-events-none absolute right-0 top-20 h-[400px] w-[400px] rounded-full bg-purple-600/10 blur-3xl" />
+
+        <div className="relative mx-auto max-w-6xl px-6 pb-20 pt-24 md:pb-28 md:pt-32">
+          <div className="flex flex-col items-center text-center">
+            <span className="mb-6 inline-flex items-center rounded-full border border-indigo-400/20 bg-indigo-500/10 px-4 py-1.5 text-xs font-medium text-indigo-300">
+              Inteligencia Tecnica Operacional para PMEs
+            </span>
+
+            <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              <span className="bg-gradient-to-r from-white via-white to-slate-400 bg-clip-text text-transparent">
+                Inteligencia Tecnica
               </span>
+              <br />
+              <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                para PMEs
+              </span>
+            </h1>
 
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                O sistema que se explica sozinho.
-              </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-400">
+              Memora indexa seu codigo, monitora erros, preserva conhecimento e
+              revisa PRs automaticamente. Tudo em uma plataforma com IA — feita
+              para times brasileiros que precisam escalar sem perder controle.
+            </p>
 
-              <div className="flex flex-col gap-3 text-lg text-muted leading-relaxed">
-                <p>Seu time de suporte responde sem acionar o dev.</p>
-                <p>Seus erros sao detectados antes do cliente reclamar.</p>
-                <p>Seu conhecimento tecnico nunca mais vai embora com um dev.</p>
-              </div>
-
-              <div className="flex flex-wrap gap-3 pt-2">
-                <Link
-                  href="/auth/signin"
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-white",
-                    "transition-all hover:bg-accent-dark hover:scale-[1.02]"
-                  )}
-                >
-                  Quero conhecer o Memora
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  href="#solucao"
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-xl border border-border px-6 py-3 text-sm font-medium text-foreground",
-                    "transition-colors hover:bg-hover"
-                  )}
-                >
-                  Ver o que resolve
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-
-            <div className="flex flex-1 justify-center md:justify-end">
-              <ChatMockup />
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+              <Link
+                href="/auth/signin"
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25",
+                  "transition-all duration-200 hover:shadow-indigo-500/40 hover:scale-[1.03]"
+                )}
+              >
+                Comecar Agora
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="#modulos"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/[0.1] px-7 py-3.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+              >
+                Conhecer os modulos
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Problem */}
-      <section className="border-t border-border bg-hover/50">
-        <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-          <h2 className="mb-4 text-center text-3xl font-bold tracking-tight">
-            Problemas que voce conhece bem
+      {/* Modules */}
+      <section id="modulos" className="relative border-t border-white/[0.06]">
+        <div className="pointer-events-none absolute left-0 top-0 h-[300px] w-[300px] rounded-full bg-indigo-600/10 blur-3xl" />
+
+        <div className="relative mx-auto max-w-6xl px-6 py-20 md:py-28">
+          <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-white">
+            Quatro modulos. Uma plataforma.
           </h2>
-          <p className="mx-auto mb-12 max-w-2xl text-center text-muted">
-            Se sua empresa desenvolve software, pelo menos tres desses problemas
-            estao custando dinheiro agora.
+          <p className="mx-auto mb-14 max-w-2xl text-center text-slate-400">
+            Cada modulo resolve um problema real do seu time — e todos trabalham
+            juntos para dar contexto completo sobre o seu sistema.
           </p>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <ProblemCard
-              title="Dev interrompido 5-15x por dia"
-              description="Suporte nao sabe onde ficam as funcionalidades e precisa perguntar ao dev toda hora."
-            />
-            <ProblemCard
-              title="Erros descobertos pelo cliente"
-              description="A investigacao comeca do zero e leva horas ate alguem entender o que aconteceu."
-            />
-            <ProblemCard
-              title="Conhecimento que vai embora"
-              description="Dev senior sai da empresa e o conhecimento sobre o sistema vai junto com ele."
-            />
-            <ProblemCard
-              title="PRs sem revisao de verdade"
-              description="Codigo entra em producao sem ninguem olhar seguranca, performance ou padroes do time."
-            />
-            <ProblemCard
-              title="Incidentes sem historico"
-              description="Quando um problema grave acontece, ninguem sabe o que ja foi tentado antes ou como foi resolvido."
-            />
-            <ProblemCard
-              title="Documentacao desatualizada ou inexistente"
-              description="Ninguem tem tempo de documentar, e quando documenta, fica desatualizado em uma semana."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Solution / Modules */}
-      <section id="solucao" className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-          <h2 className="mb-4 text-center text-3xl font-bold tracking-tight">
-            O que o Memora faz pela sua empresa
-          </h2>
-          <p className="mx-auto mb-12 max-w-2xl text-center text-muted">
-            Sete modulos que trabalham juntos para proteger o conhecimento,
-            acelerar o suporte e prevenir problemas.
-          </p>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2">
             <ModuleCard
               icon={MessageSquare}
-              title="Assistente de Suporte"
-              description="O suporte responde duvidas sobre o sistema em segundos, sem precisar acionar o dev."
-              metric="Reduz interrupcoes ao dev em ate 80%"
+              title="Code Intelligence"
+              description="Indexa seu codigo via AST, gera embeddings e responde perguntas em portugues com busca hibrida (semantica + full-text). O suporte resolve sem acionar o dev."
             />
             <ModuleCard
               icon={Shield}
-              title="Monitor de Erros"
-              description="Erros sao detectados, explicados e notificados automaticamente — antes do cliente perceber."
-              metric="Tempo de deteccao reduzido de horas para minutos"
+              title="Error Monitor"
+              description="Recebe logs do seu sistema, analisa com IA, gera alertas com explicacoes em portugues e notifica via email e webhooks. Detecta erros antes do cliente perceber."
             />
             <ModuleCard
               icon={Brain}
-              title="Memoria Tecnica"
-              description="Todo conhecimento do time — decisoes, mudancas, motivos — fica registrado e pesquisavel para sempre."
-              metric="Zero perda de conhecimento em turnover"
+              title="Technical Memory"
+              description="Captura conhecimento de PRs, commits, issues e documentos. Gera wikis automaticas por componente. O conhecimento nunca mais vai embora com um dev."
             />
             <ModuleCard
               icon={Eye}
-              title="Revisao de Codigo"
-              description="Cada PR e revisado automaticamente em seguranca, performance, bugs e padroes do time."
-              metric="Problemas encontrados antes de chegar em producao"
-            />
-            <ModuleCard
-              icon={Zap}
-              title="Gestao de Incidentes"
-              description="Quando algo grave acontece, o Memora organiza a investigacao, sugere hipoteses e gera o postmortem."
-              metric="Tempo medio de resolucao reduzido em 40%"
-            />
-            <ModuleCard
-              icon={BookOpen}
-              title="Documentacao Automatica"
-              description="Documentacao gerada e atualizada automaticamente a partir do proprio sistema. Sempre atual."
-              metric="Documentacao que se mantem sozinha"
-            />
-            <ModuleCard
-              icon={Code2}
-              title="Geracao de Codigo"
-              description="Gera codigo consistente com os padroes do seu projeto, acelerando entregas sem perder qualidade."
-              metric="Entregas ate 3x mais rapidas em tarefas repetitivas"
+              title="Code Review"
+              description="Revisa PRs automaticamente em 5 categorias paralelas: bugs, seguranca, performance, consistencia e padroes. Posta comentarios formatados direto no GitHub."
             />
           </div>
         </div>
       </section>
 
-      {/* ROI */}
-      <section className="border-t border-border bg-hover/50">
-        <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-          <h2 className="mb-4 text-center text-3xl font-bold tracking-tight">
-            O retorno e mensuravel
+      {/* How it works */}
+      <section className="relative border-t border-white/[0.06] bg-white/[0.02]">
+        <div className="pointer-events-none absolute right-0 bottom-0 h-[400px] w-[400px] rounded-full bg-purple-600/10 blur-3xl" />
+
+        <div className="relative mx-auto max-w-6xl px-6 py-20 md:py-28">
+          <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-white">
+            Como funciona
           </h2>
-          <p className="mx-auto mb-12 max-w-2xl text-center text-muted">
-            Numeros reais de times que pararam de perder tempo com problemas evitaveis.
+          <p className="mx-auto mb-14 max-w-2xl text-center text-slate-400">
+            Em tres passos seu time ja esta operando com inteligencia tecnica.
           </p>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <ROICard
-              icon={Clock}
-              value="80%"
-              label="menos interrupcoes ao dev"
-            />
-            <ROICard
-              icon={TrendingDown}
-              value="60%"
-              label="reducao no tempo de investigacao de erros"
-            />
-            <ROICard
-              icon={Users}
-              value="0"
-              label="conhecimento perdido em turnover"
-            />
-            <ROICard
-              icon={DollarSign}
-              value="5-15h"
-              label="economizadas por dev por semana"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Para quem e */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-          <h2 className="mb-4 text-center text-3xl font-bold tracking-tight">
-            Para quem e o Memora
-          </h2>
-          <p className="mx-auto mb-12 max-w-2xl text-center text-muted">
-            Feito para empresas brasileiras que desenvolvem software e precisam
-            escalar sem perder controle.
-          </p>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <AudienceCard
-              icon={Building2}
-              title="Software houses e agencias"
-              description="Times de 5 a 50 devs que precisam manter multiplos projetos sem perder qualidade."
-            />
-            <AudienceCard
-              icon={Rocket}
-              title="Startups em crescimento"
-              description="Empresas que estao escalando rapido e nao podem depender de uma unica pessoa que sabe tudo."
-            />
-            <AudienceCard
-              icon={Target}
-              title="PMEs com time de tecnologia"
-              description="Empresas com sistema proprio que precisam de suporte eficiente e menos dependencia do dev."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Como o Memora entra na sua empresa */}
-      <section className="border-t border-border bg-hover/50">
-        <div className="mx-auto max-w-6xl px-6 py-20 md:py-24">
-          <h2 className="mb-12 text-center text-3xl font-bold tracking-tight">
-            Como o Memora entra na sua empresa
-          </h2>
-
-          <div className="grid gap-10 sm:grid-cols-3">
+          <div className="grid gap-12 sm:grid-cols-3 sm:gap-8">
             <StepCard
               number={1}
-              title="Implementacao"
-              description="Em ate 1 semana o Memora esta configurado e integrado ao seu ambiente. Sem mudar nada no seu time ou processo atual."
+              icon={GitBranch}
+              title="Conecte seu repositorio"
+              description="Integre com GitHub em um clique. O Memora indexa todo o codigo, gera embeddings e monta a base de conhecimento automaticamente."
             />
             <StepCard
               number={2}
-              title="Aprendizado"
-              description="O Memora aprende o seu sistema automaticamente. Quanto mais usado, mais preciso fica. Nenhum esforco manual de documentacao necessario."
+              icon={Settings}
+              title="Configure o monitor"
+              description="Instale o agente de logs ou envie via API. O Memora analisa erros em tempo real e notifica seu time com explicacoes claras."
             />
             <StepCard
               number={3}
-              title="Resultado"
-              description="Em 30 dias voce tem metricas reais: menos interrupcoes, erros detectados antes, time mais produtivo."
+              icon={BarChart3}
+              title="Receba insights"
+              description="Painel executivo com metricas semanais, historico de saude, exportacao de dados e alertas proativos. Controle total."
             />
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-6 py-20 md:py-24 text-center">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
-            Seu time merece trabalhar no que importa.
+      {/* Benefits */}
+      <section className="relative border-t border-white/[0.06]">
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[300px] w-[600px] -translate-x-1/2 rounded-full bg-gradient-to-br from-indigo-600/10 to-purple-600/10 blur-3xl" />
+
+        <div className="relative mx-auto max-w-6xl px-6 py-20 md:py-28">
+          <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-white">
+            Por que times escolhem o Memora
           </h2>
-          <p className="mx-auto mb-8 max-w-xl text-lg text-muted">
-            Pare de perder horas com interrupcoes, erros evitaveis e conhecimento
-            que vai embora. Converse com a gente.
+          <p className="mx-auto mb-14 max-w-2xl text-center text-slate-400">
+            Resultado real, mensuravel desde a primeira semana.
           </p>
 
-          <div className="flex flex-col items-center gap-4">
-            <Link
-              href="/auth/signin"
-              className={cn(
-                "inline-flex items-center gap-2 rounded-xl bg-accent px-8 py-3.5 text-base font-semibold text-white",
-                "transition-all hover:bg-accent-dark hover:scale-[1.02]"
-              )}
-            >
-              Falar com a equipe Memora
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+          <div className="grid gap-6 sm:grid-cols-3">
+            <BenefitCard
+              icon={Clock}
+              title="Economia de tempo"
+              description="Suporte responde sem dev. Erros sao explicados automaticamente. PRs revisados em segundos. Seu time foca no que importa."
+            />
+            <BenefitCard
+              icon={ShieldCheck}
+              title="Seguranca proativa"
+              description="Erros detectados antes do cliente. Vulnerabilidades encontradas no PR. Incidentes com historico e postmortem automatico."
+            />
+            <BenefitCard
+              icon={Database}
+              title="Conhecimento centralizado"
+              description="Decisoes, mudancas e motivos registrados para sempre. Documentacao automatica. Zero perda em turnover de devs."
+            />
+          </div>
+        </div>
+      </section>
 
-            <p className="text-sm text-muted">
-              Sem compromisso. Sem cartao de credito. Implementacao em ate 1 semana.
+      {/* Pricing */}
+      <section id="precos" className="relative border-t border-white/[0.06] bg-white/[0.02]">
+        <div className="pointer-events-none absolute right-0 top-0 h-[400px] w-[400px] rounded-full bg-indigo-600/10 blur-3xl" />
+        <div className="pointer-events-none absolute left-0 bottom-0 h-[300px] w-[300px] rounded-full bg-purple-600/10 blur-3xl" />
+
+        <div className="relative mx-auto max-w-6xl px-6 py-20 md:py-28">
+          <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-white">
+            Planos
+          </h2>
+          <p className="mx-auto mb-14 max-w-2xl text-center text-slate-400">
+            Escolha o plano ideal para o seu time. Todos incluem os 11 modulos do Memora.
+          </p>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* PRO */}
+            <div className="relative rounded-2xl border-2 border-indigo-500/40 bg-white/[0.04] p-8 backdrop-blur-sm">
+              <div className="absolute -top-3 left-6">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-3 py-1 text-xs font-semibold text-white shadow-lg shadow-indigo-500/25">
+                  <Crown className="h-3 w-3" />
+                  Mais popular
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white">PRO</h3>
+                  <p className="mt-1 text-sm text-slate-400">Por time (ate 10 devs)</p>
+                </div>
+
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-white">R$497</span>
+                    <span className="text-sm text-slate-400">/mes</span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Um dev interrompido 2x a menos por dia ja paga o plano.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5">
+                  <p className="text-sm font-medium text-emerald-300">
+                    Trial de 7 dias gratis — sem cartao de credito
+                  </p>
+                </div>
+
+                <ul className="flex flex-col gap-3">
+                  {[
+                    "Todos os 11 modulos",
+                    "Multi-repositorio",
+                    "Multi-usuario (ate 10)",
+                    "Infraestrutura Memora (Supabase)",
+                    "Suporte por email",
+                    "Atualizacoes automaticas",
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href="https://memora-system.vercel.app/auth/signin"
+                  className={cn(
+                    "mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25",
+                    "transition-all duration-200 hover:shadow-indigo-500/40 hover:scale-[1.03]"
+                  )}
+                >
+                  Comecar trial de 7 dias
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Enterprise */}
+            <div className="relative rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 backdrop-blur-sm">
+              <div className="absolute -top-3 left-6">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.15] bg-white/[0.08] px-3 py-1 text-xs font-semibold text-slate-200">
+                  <ShieldCheck className="h-3 w-3" />
+                  Seguranca maxima
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Enterprise</h3>
+                  <p className="mt-1 text-sm text-slate-400">Para times que precisam de controle total</p>
+                </div>
+
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-white">R$1.497</span>
+                    <span className="text-sm text-slate-400">/mes</span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Ativacao sob consulta
+                  </p>
+                </div>
+
+                <ul className="flex flex-col gap-3">
+                  {[
+                    "Tudo do PRO",
+                    "Banco de dados na sua infra",
+                    "Compliance total (LGPD)",
+                    "Dados nunca saem do seu ambiente",
+                    "SSO e controle de acesso avancado",
+                    "SLA dedicado",
+                    "Suporte prioritario",
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href="mailto:rafael@orbitalis.com.br?subject=Memora Enterprise"
+                  className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.1] px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/[0.06]"
+                >
+                  Falar com a equipe
+                  <Building2 className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Customer */}
+            <div className="relative rounded-2xl border border-white/[0.08] bg-white/[0.03] p-8 backdrop-blur-sm">
+              <div className="absolute -top-3 left-6">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                  <Sparkles className="h-3 w-3" />
+                  Sob medida
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white">Customer</h3>
+                  <p className="mt-1 text-sm text-slate-400">Implementacao personalizada na sua operacao</p>
+                </div>
+
+                <div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-white">Entre em contato</span>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Preco sob medida para sua operacao
+                  </p>
+                </div>
+
+                <ul className="flex flex-col gap-3">
+                  {[
+                    "Tudo do Enterprise",
+                    "Modulos personalizados sob demanda",
+                    "Integracao com sistemas existentes",
+                    "Consultoria de implementacao",
+                    "Treinamento do time",
+                    "Suporte dedicado",
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-indigo-400" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href="mailto:rafael@orbitalis.com.br?subject=Memora Customer"
+                  className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.1] px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/[0.06]"
+                >
+                  Falar com a equipe
+                  <Sparkles className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Early adopter note */}
+          <div className="mt-8 flex items-center justify-center gap-2 text-center">
+            <Star className="h-4 w-4 text-amber-400/70" />
+            <p className="text-sm text-slate-500">
+              Primeiros 3 clientes: <span className="text-amber-400/80 font-medium">R$397/mes</span> — preco travado para sempre.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-6 py-10">
-          <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
-            <div className="flex items-center gap-2">
-              <Image src="/logo.png" alt="Memora" width={32} height={32} className="h-8 w-8 rounded-lg" />
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-foreground">
-                  Memora
-                </span>
-                <span className="text-xs text-muted">
-                  Inteligencia Tecnica Operacional
-                </span>
-              </div>
-            </div>
+      {/* CTA */}
+      <section className="relative border-t border-white/[0.06]">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-indigo-600/5 to-transparent" />
 
-            <div className="flex items-center gap-6 text-sm text-muted">
-              <Link href="/auth/signin" className="transition-colors hover:text-foreground">
+        <div className="relative mx-auto max-w-6xl px-6 py-20 md:py-28 text-center">
+          <h2 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Pronto para ter controle total do seu sistema?
+          </h2>
+          <p className="mx-auto mb-10 max-w-xl text-lg text-slate-400">
+            Comece com 7 dias gratis. Sem cartao de credito. Configuracao em 15 minutos.
+          </p>
+
+          <Link
+            href="https://memora-system.vercel.app/auth/signin"
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-500/25",
+              "transition-all duration-200 hover:shadow-indigo-500/40 hover:scale-[1.03]"
+            )}
+          >
+            Comecar trial de 7 dias
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/[0.06]">
+        <div className="mx-auto max-w-6xl px-6 py-8">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+            <div className="flex items-center gap-2">
+              <Image
+                src="/logo.png"
+                alt="Memora"
+                width={24}
+                height={24}
+                className="h-6 w-6 rounded-md"
+              />
+              <span className="text-sm text-slate-500">
+                &copy; 2026 Memora &mdash; Orbitalis
+              </span>
+            </div>
+            <div className="flex items-center gap-6 text-sm text-slate-500">
+              <Link
+                href="/auth/signin"
+                className="transition-colors hover:text-slate-300"
+              >
                 Entrar
-              </Link>
-              <Link href="#" className="transition-colors hover:text-foreground">
-                Politica de Privacidade
-              </Link>
-              <Link href="#" className="transition-colors hover:text-foreground">
-                Termos de Uso
               </Link>
             </div>
           </div>

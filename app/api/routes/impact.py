@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_session, require_role
+from app.api.deps import get_current_product, get_current_user, get_data_session, require_role
+from app.models.product import Product
 from app.models.user import User
 
 router = APIRouter(prefix="/impact")
@@ -39,8 +40,9 @@ def _run_analysis(db: Session, analysis_id: str, org_id: str):
 def start_analysis(
     body: AnalyzeRequest,
     bg: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Start an impact analysis in background."""
     import json
@@ -49,12 +51,13 @@ def start_analysis(
     db.execute(
         text("""
             INSERT INTO impact_analyses
-                (id, org_id, repo_name, requested_by, change_description, affected_files, status)
-            VALUES (:id, :org_id, :repo, :user_id, :desc, :files, 'pending')
+                (id, org_id, product_id, repo_name, requested_by, change_description, affected_files, status)
+            VALUES (:id, :org_id, :product_id, :repo, :user_id, :desc, :files, 'pending')
         """),
         {
             "id": analysis_id,
             "org_id": user.org_id,
+            "product_id": product.id,
             "repo": body.repo_name,
             "user_id": user.id,
             "desc": body.change_description,
@@ -71,13 +74,14 @@ def start_analysis(
 @router.get("/{analysis_id}")
 def get_analysis(
     analysis_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Get analysis detail with findings."""
     analysis = db.execute(
-        text("SELECT * FROM impact_analyses WHERE id = :id AND org_id = :org_id"),
-        {"id": analysis_id, "org_id": user.org_id},
+        text("SELECT * FROM impact_analyses WHERE id = :id AND product_id = :product_id"),
+        {"id": analysis_id, "product_id": product.id},
     ).mappings().first()
 
     if not analysis:
@@ -109,8 +113,9 @@ def get_findings(
     analysis_id: str,
     severity: str | None = None,
     finding_type: str | None = None,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """List findings with optional filters."""
     from app.core.query_builder import build_where_clause
@@ -138,12 +143,13 @@ def get_findings(
 def list_analyses(
     repo_name: str | None = None,
     page: int = 1,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """List user's past analyses."""
-    conditions = ["org_id = :org_id", "requested_by = :user_id"]
-    params: dict = {"org_id": user.org_id, "user_id": user.id}
+    conditions = ["product_id = :product_id", "requested_by = :user_id"]
+    params: dict = {"product_id": product.id, "user_id": user.id}
 
     if repo_name:
         conditions.append("repo_name = :repo")
@@ -181,13 +187,14 @@ def list_analyses(
 @router.get("/{analysis_id}/report/pdf")
 def download_impact_pdf(
     analysis_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Download impact analysis report as PDF."""
     analysis = db.execute(
-        text("SELECT * FROM impact_analyses WHERE id = :id AND org_id = :org_id"),
-        {"id": analysis_id, "org_id": user.org_id},
+        text("SELECT * FROM impact_analyses WHERE id = :id AND product_id = :product_id"),
+        {"id": analysis_id, "product_id": product.id},
     ).mappings().first()
     if not analysis:
         raise HTTPException(404, "Analise nao encontrada")

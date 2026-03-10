@@ -195,6 +195,7 @@ def toggle_user_active(user_id: str, db: Session = Depends(get_session), user: U
 class InviteCreate(BaseModel):
     role: str
     email: str | None = None
+    product_id: str | None = None
 
 
 @router.get("/admin/invites")
@@ -217,8 +218,8 @@ def create_invite(body: InviteCreate, db: Session = Depends(get_session), user: 
 
     db.execute(
         text("""
-            INSERT INTO invites (id, org_id, token, role, email, created_by, status, expires_at)
-            VALUES (:id, :org_id, :token, :role, :email, :created_by, 'pending', :expires_at)
+            INSERT INTO invites (id, org_id, token, role, email, product_id, created_by, status, expires_at)
+            VALUES (:id, :org_id, :token, :role, :email, :product_id, :created_by, 'pending', :expires_at)
         """),
         {
             "id": invite_id,
@@ -226,6 +227,7 @@ def create_invite(body: InviteCreate, db: Session = Depends(get_session), user: 
             "token": token,
             "role": body.role,
             "email": body.email,
+            "product_id": body.product_id,
             "created_by": user.id,
             "expires_at": expires_at,
         },
@@ -236,6 +238,7 @@ def create_invite(body: InviteCreate, db: Session = Depends(get_session), user: 
         "id": invite_id,
         "token": token,
         "role": body.role,
+        "product_id": body.product_id,
         "invite_url": f"/invite/{token}",
         "expires_at": expires_at.isoformat(),
     }

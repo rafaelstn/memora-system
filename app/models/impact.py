@@ -11,6 +11,7 @@ class ImpactAnalysis(Base):
 
     id = Column(String(36), primary_key=True)
     org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    product_id = Column(String(36), ForeignKey("products.id"), nullable=True, index=True)
     repo_name = Column(String(255), nullable=False)
     requested_by = Column(String(36), ForeignKey("users.id"), nullable=False)
     change_description = Column(Text, nullable=False)

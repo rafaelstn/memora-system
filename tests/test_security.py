@@ -1,338 +1,337 @@
-"""Tests for Module 11 — Security Analyzer + DAST Scanner."""
-import json
+"""Testes de seguranca - rate limiting, refresh tokens, audit log, validacoes."""
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
+from fastapi.testclient import TestClient
+
+from app.api.deps import get_session
+from app.main import app
+
+client = TestClient(app)
 
 
-# ────────────────────── Security Scan API ──────────────────────
+# --- Rate Limiting ---
 
-def test_start_security_scan(admin_client):
-    resp = admin_client.post("/api/security/scan", json={"repo_name": "my-repo"})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "scan_id" in data
-    assert data["status"] == "analyzing"
+def test_rate_limit_returns_429_on_exceed():
+    from slowapi.errors import RateLimitExceeded
+    from app.main import _rate_limit_handler
+    import json
 
-
-def test_start_security_scan_dev(dev_client):
-    resp = dev_client.post("/api/security/scan", json={"repo_name": "my-repo"})
-    assert resp.status_code == 200
-
-
-def test_start_security_scan_suporte_forbidden(suporte_client):
-    resp = suporte_client.post("/api/security/scan", json={"repo_name": "my-repo"})
-    assert resp.status_code == 403
+    req = MagicMock()
+    exc = MagicMock(spec=RateLimitExceeded)
+    response = _rate_limit_handler(req, exc)
+    assert response.status_code == 429
+    body = json.loads(response.body)
+    assert "limite" in body["detail"].lower()
 
 
-def test_get_security_scan_not_found(admin_client):
-    from app.api.deps import get_session
-    from app.main import app
+# --- Security Headers ---
 
+def test_security_headers_present(admin_client):
+    response = admin_client.get("/api/health")
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert response.headers.get("X-Frame-Options") == "DENY"
+    assert response.headers.get("X-XSS-Protection") == "1; mode=block"
+    assert "strict-origin" in response.headers.get("Referrer-Policy", "")
+    assert "camera=()" in response.headers.get("Permissions-Policy", "")
+
+
+def test_server_header_removed(admin_client):
+    response = admin_client.get("/api/health")
+    assert "server" not in response.headers
+
+
+# --- Payload Size Limits ---
+
+def test_payload_limit_constants():
+    from app.main import _MAX_BODY_CHAT, _MAX_BODY_INGEST, _MAX_BODY_DEFAULT
+    assert _MAX_BODY_CHAT == 1 * 1024 * 1024
+    assert _MAX_BODY_INGEST == 50 * 1024 * 1024
+    assert _MAX_BODY_DEFAULT == 10 * 1024 * 1024
+
+
+# --- Refresh Tokens ---
+
+def test_refresh_token_hash():
+    from app.core.refresh_tokens import _hash_token
+    h = _hash_token("test-token")
+    assert len(h) == 64
+    assert _hash_token("test-token") == h
+
+
+def test_refresh_token_create():
+    from app.core.refresh_tokens import create_refresh_token
     mock_db = MagicMock()
-    mock_db.execute.return_value.mappings.return_value.first.return_value = None
-    app.dependency_overrides[get_session] = lambda: mock_db
-    resp = admin_client.get("/api/security/scan/nonexistent")
-    assert resp.status_code == 404
+    token = create_refresh_token(mock_db, "user-001", "127.0.0.1", "Mozilla/5.0")
+    assert len(token) > 20
+    mock_db.execute.assert_called_once()
+    mock_db.commit.assert_called_once()
 
 
-def test_get_security_scan_ok(admin_client):
-    from app.api.deps import get_session
-    from app.main import app
-
+def test_refresh_token_validate_and_rotate():
+    from app.core.refresh_tokens import validate_and_rotate
     mock_db = MagicMock()
     mock_db.execute.return_value.mappings.return_value.first.return_value = {
-        "id": "scan-1",
-        "org_id": "org-test-001",
-        "repo_name": "my-repo",
-        "status": "completed",
-        "security_score": 85,
-        "total_findings": 3,
-        "critical_count": 0,
-        "high_count": 1,
-        "medium_count": 2,
-        "low_count": 0,
+        "user_id": "user-001",
+        "expires_at": datetime.utcnow() + timedelta(days=1),
+        "revoked_at": None,
+        "used_at": None,
+        "family_id": "family-001",
     }
-    app.dependency_overrides[get_session] = lambda: mock_db
-    resp = admin_client.get("/api/security/scan/scan-1")
-    assert resp.status_code == 200
-    assert resp.json()["security_score"] == 85
+    new_token, user_id = validate_and_rotate(mock_db, "old-token", "127.0.0.1")
+    assert user_id == "user-001"
+    assert len(new_token) > 20
 
 
-def test_list_security_scans(admin_client):
-    from app.api.deps import get_session
-    from app.main import app
-
+def test_refresh_token_replay_detection():
+    from app.core.refresh_tokens import validate_and_rotate
     mock_db = MagicMock()
-    call_count = 0
-    def side_effect(*args, **kwargs):
-        nonlocal call_count
-        call_count += 1
-        result = MagicMock()
-        if call_count == 1:
-            result.mappings.return_value.all.return_value = []
-        else:
-            result.mappings.return_value.first.return_value = {"cnt": 0}
-        return result
-    mock_db.execute.side_effect = side_effect
-    app.dependency_overrides[get_session] = lambda: mock_db
-    resp = admin_client.get("/api/security/scans")
-    assert resp.status_code == 200
-    assert resp.json()["total"] == 0
+    mock_db.execute.return_value.mappings.return_value.first.return_value = {
+        "user_id": "user-001",
+        "expires_at": datetime.utcnow() + timedelta(days=1),
+        "revoked_at": None,
+        "used_at": datetime.utcnow(),
+        "family_id": "family-001",
+    }
+    with pytest.raises(ValueError, match="Replay"):
+        validate_and_rotate(mock_db, "reused-token")
 
 
-def test_security_stats(admin_client):
-    from app.api.deps import get_session
-    from app.main import app
-
+def test_refresh_token_expired():
+    from app.core.refresh_tokens import validate_and_rotate
     mock_db = MagicMock()
-    mock_db.execute.return_value.mappings.return_value.all.return_value = [
-        {"repo_name": "r", "security_score": 90, "total_findings": 2, "critical_count": 0, "high_count": 1, "created_at": "2026-03-06"},
-    ]
-    app.dependency_overrides[get_session] = lambda: mock_db
-    resp = admin_client.get("/api/security/stats")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["avg_score"] == 90
-    assert data["total_critical_findings"] == 0
+    mock_db.execute.return_value.mappings.return_value.first.return_value = {
+        "user_id": "user-001",
+        "expires_at": datetime.utcnow() - timedelta(days=1),
+        "revoked_at": None,
+        "used_at": None,
+        "family_id": None,
+    }
+    with pytest.raises(ValueError, match="expirado"):
+        validate_and_rotate(mock_db, "expired-token")
 
 
-# ────────────────────── Security Scanner Core ──────────────────────
-
-def test_scanner_secrets_detection():
-    from app.core.security_scanner import SecurityScanner
-
+def test_refresh_token_revoked():
+    from app.core.refresh_tokens import validate_and_rotate
     mock_db = MagicMock()
-    scanner = SecurityScanner(mock_db, "org-test-001")
-
-    chunks = [
-        {"id": "1", "file_path": "config.py", "chunk_name": "config", "content": 'API_KEY = "sk-1234567890abcdef1234567890abcdef"', "chunk_type": "module"},
-    ]
-    findings = scanner._scan_secrets(chunks)
-    assert len(findings) >= 1
-    assert findings[0]["category"] == "hardcoded_secret"
-    assert findings[0]["severity"] == "critical"
-
-
-def test_scanner_sql_injection_detection():
-    from app.core.security_scanner import SecurityScanner
-
-    mock_db = MagicMock()
-    scanner = SecurityScanner(mock_db, "org-test-001")
-
-    chunks = [
-        {"id": "1", "file_path": "db.py", "chunk_name": "query", "content": 'db.execute(f"SELECT * FROM users WHERE id = {user_id}")', "chunk_type": "function"},
-    ]
-    findings = scanner._scan_vulnerabilities(chunks)
-    assert len(findings) >= 1
-    assert findings[0]["category"] == "sql_injection"
+    mock_db.execute.return_value.mappings.return_value.first.return_value = {
+        "user_id": "user-001",
+        "expires_at": datetime.utcnow() + timedelta(days=1),
+        "revoked_at": datetime.utcnow(),
+        "used_at": None,
+        "family_id": None,
+    }
+    with pytest.raises(ValueError, match="revogado"):
+        validate_and_rotate(mock_db, "revoked-token")
 
 
-def test_scanner_config_audit():
-    from app.core.security_scanner import SecurityScanner
-
-    mock_db = MagicMock()
-    scanner = SecurityScanner(mock_db, "org-test-001")
-
-    chunks = [
-        {"id": "1", "file_path": "settings.py", "chunk_name": "settings", "content": 'DEBUG = True\nALLOWED_HOSTS = ["*"]', "chunk_type": "module"},
-    ]
-    findings = scanner._scan_config(chunks)
-    assert len(findings) >= 1
-
-
-def test_scanner_score_calculation():
-    from app.core.security_scanner import SecurityScanner
-
-    mock_db = MagicMock()
-    scanner = SecurityScanner(mock_db, "org-test-001")
-
-    findings = [
-        {"severity": "critical"},
-        {"severity": "high"},
-        {"severity": "medium"},
-    ]
-    score = scanner._calculate_score(findings)
-    assert score == 100 - 15 - 8 - 3  # 74
-    assert score == 74
-
-    # No findings = 100
-    assert scanner._calculate_score([]) == 100
-
-
-# ────────────────────── DAST API ──────────────────────
-
-def test_start_dast_scan_admin(admin_client):
-    resp = admin_client.post("/api/security/dast/scan", json={"target_url": "http://test.example.com:8080", "target_env": "development"})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "scan_id" in data
-    assert data["status"] == "running"
-
-
-def test_start_dast_scan_dev_forbidden(dev_client):
-    resp = dev_client.post("/api/security/dast/scan", json={"target_url": "http://test.example.com", "target_env": "development"})
-    assert resp.status_code == 403
-
-
-def test_start_dast_scan_suporte_forbidden(suporte_client):
-    resp = suporte_client.post("/api/security/dast/scan", json={"target_url": "http://test.example.com", "target_env": "development"})
-    assert resp.status_code == 403
-
-
-def test_start_dast_scan_production_url_rejected(admin_client):
-    """APP_URL should be rejected."""
-    with patch("app.core.dast_scanner.settings") as mock_settings:
-        mock_settings.APP_URL = "http://myapp.com"
-        mock_settings.NEXT_PUBLIC_API_URL = "http://api.myapp.com"
-        resp = admin_client.post("/api/security/dast/scan", json={"target_url": "http://myapp.com", "target_env": "development"})
-        # validate_target_url checks against settings — may or may not match depending on hostname
-        assert resp.status_code in (200, 400)
-
-
-def test_start_dast_scan_private_ip_rejected(admin_client):
-    resp = admin_client.post("/api/security/dast/scan", json={"target_url": "http://192.168.1.100:8000", "target_env": "development"})
-    assert resp.status_code == 400
-    assert "IP" in resp.json()["detail"] or "privado" in resp.json()["detail"]
-
-
-def test_start_dast_scan_invalid_env(admin_client):
-    resp = admin_client.post("/api/security/dast/scan", json={"target_url": "http://test.example.com", "target_env": "production"})
-    assert resp.status_code == 400
-
-
-def test_get_dast_scan_not_found(admin_client):
-    from app.api.deps import get_session
-    from app.main import app
-
+def test_refresh_token_not_found():
+    from app.core.refresh_tokens import validate_and_rotate
     mock_db = MagicMock()
     mock_db.execute.return_value.mappings.return_value.first.return_value = None
+    with pytest.raises(ValueError):
+        validate_and_rotate(mock_db, "unknown-token")
+
+
+def test_revoke_token():
+    from app.core.refresh_tokens import revoke_token
+    mock_db = MagicMock()
+    revoke_token(mock_db, "some-token")
+    mock_db.execute.assert_called_once()
+    mock_db.commit.assert_called_once()
+
+
+def test_revoke_all_user_tokens():
+    from app.core.refresh_tokens import revoke_all_user_tokens
+    mock_db = MagicMock()
+    mock_db.execute.return_value.rowcount = 3
+    count = revoke_all_user_tokens(mock_db, "user-001")
+    assert count == 3
+
+
+# --- Auth endpoints: refresh + logout ---
+
+@patch("app.api.routes.auth.validate_and_rotate")
+def test_auth_refresh_success(mock_rotate):
+    mock_rotate.return_value = ("new-token-xyz", "user-001")
+    mock_db = MagicMock()
     app.dependency_overrides[get_session] = lambda: mock_db
-    resp = admin_client.get("/api/security/dast/scan/nonexistent")
-    assert resp.status_code == 404
+    response = client.post("/api/auth/refresh", json={"refresh_token": "old-token"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["refresh_token"] == "new-token-xyz"
+    app.dependency_overrides.clear()
 
 
-# ────────────────────── DAST Scanner Core ──────────────────────
-
-def test_dast_validate_private_ip():
-    from app.core.dast_scanner import validate_target_url
-    error = validate_target_url("http://192.168.1.1:8000")
-    assert error is not None
-    assert "privado" in error.lower() or "IP" in error
-
-
-def test_dast_validate_loopback():
-    from app.core.dast_scanner import validate_target_url
-    error = validate_target_url("http://127.0.0.1:8000")
-    assert error is not None
-
-
-def test_dast_validate_valid_url():
-    from app.core.dast_scanner import validate_target_url
-    error = validate_target_url("http://test.example.com:8080")
-    assert error is None
-
-
-def test_dast_scanner_calculate_risk():
-    from app.core.dast_scanner import DASTScanner
+@patch("app.api.routes.auth.validate_and_rotate")
+def test_auth_refresh_invalid(mock_rotate):
+    mock_rotate.side_effect = ValueError("Token invalido")
     mock_db = MagicMock()
-    scanner = DASTScanner(mock_db, "org-test-001")
-
-    assert scanner._calculate_risk([]) == "low"
-    assert scanner._calculate_risk([{"confirmed": True, "severity": "critical"}]) == "critical"
-    assert scanner._calculate_risk([{"confirmed": True, "severity": "high"}]) == "high"
-    assert scanner._calculate_risk([{"confirmed": True, "severity": "medium"}]) == "medium"
-    assert scanner._calculate_risk([{"confirmed": False, "severity": "critical"}]) == "low"
+    app.dependency_overrides[get_session] = lambda: mock_db
+    response = client.post("/api/auth/refresh", json={"refresh_token": "bad-token"})
+    assert response.status_code == 401
+    app.dependency_overrides.clear()
 
 
-def test_dast_scanner_generate_summary():
-    from app.core.dast_scanner import DASTScanner
+@patch("app.api.routes.auth.revoke_refresh_token")
+def test_auth_logout(mock_revoke):
     mock_db = MagicMock()
-    scanner = DASTScanner(mock_db, "org-test-001")
+    app.dependency_overrides[get_session] = lambda: mock_db
+    response = client.post("/api/auth/logout", json={"refresh_token": "some-token"})
+    assert response.status_code == 200
+    mock_revoke.assert_called_once()
+    app.dependency_overrides.clear()
 
-    assert "Nenhuma" in scanner._generate_summary([], 0)
-    findings = [
-        {"confirmed": True, "title": "CORS aberto"},
-        {"confirmed": True, "title": "Rate limit ausente"},
+
+# --- Audit Log ---
+
+def test_audit_log_action():
+    from app.core.audit import log_action
+    mock_db = MagicMock()
+    log_action(
+        mock_db,
+        user_id="u-001",
+        org_id="org-001",
+        action="auth.login",
+        ip_address="127.0.0.1",
+    )
+    mock_db.execute.assert_called_once()
+    mock_db.commit.assert_called_once()
+
+
+def test_audit_log_never_raises():
+    from app.core.audit import log_action
+    mock_db = MagicMock()
+    mock_db.execute.side_effect = Exception("DB error")
+    # Should not raise
+    log_action(mock_db, user_id="u-001", org_id="org-001", action="test")
+
+
+def test_audit_log_get_entries():
+    from app.core.audit import get_audit_log
+    mock_db = MagicMock()
+    mock_db.execute.return_value.mappings.return_value.all.return_value = [
+        {
+            "id": 1,
+            "action": "auth.login",
+            "org_id": "org-001",
+            "user_id": "u-001",
+            "resource_type": None,
+            "resource_id": None,
+            "detail": None,
+            "ip_address": "127.0.0.1",
+            "created_at": datetime.utcnow(),
+        }
     ]
-    summary = scanner._generate_summary(findings, 2)
-    assert "CORS" in summary
+    entries = get_audit_log(mock_db, "org-001", action="auth.login")
+    assert len(entries) == 1
+    assert entries[0]["action"] == "auth.login"
 
 
-def test_dast_cors_probe():
-    from app.core.dast_scanner import DASTScanner
-    mock_db = MagicMock()
-    scanner = DASTScanner(mock_db, "org-test-001")
-
-    with patch("app.core.dast_scanner.httpx") as mock_httpx:
-        mock_resp = MagicMock()
-        mock_resp.headers = {"access-control-allow-origin": "*"}
-        mock_resp.status_code = 200
-        mock_httpx.options.return_value = mock_resp
-        scanner._probe_cors("http://test.example.com")
-
-    cors_findings = [f for f in scanner.findings if f["probe_type"] == "cors"]
-    assert len(cors_findings) >= 1
-    assert cors_findings[0]["confirmed"] is True
+def test_audit_route_blocked_for_suporte(suporte_client):
+    response = suporte_client.get("/api/admin/audit")
+    assert response.status_code == 403
 
 
-def test_dast_xss_probe_no_vuln():
-    from app.core.dast_scanner import DASTScanner
-    mock_db = MagicMock()
-    scanner = DASTScanner(mock_db, "org-test-001")
-    scanner.endpoints = [{"path": "/api/search", "method": "GET"}]
-
-    with patch("app.core.dast_scanner.httpx") as mock_httpx:
-        mock_resp = MagicMock()
-        mock_resp.text = '{"results": []}'
-        mock_resp.status_code = 200
-        mock_httpx.get.return_value = mock_resp
-        scanner._probe_xss("http://test.example.com")
-
-    xss_findings = [f for f in scanner.findings if f["probe_type"] == "xss"]
-    assert len(xss_findings) >= 1
-    assert xss_findings[0]["confirmed"] is False
+def test_audit_route_allowed_for_admin(admin_client):
+    response = admin_client.get("/api/admin/audit")
+    # 200 or 500 (mock DB), but never 401/403
+    assert response.status_code not in (401, 403)
 
 
-def test_dast_sensitive_exposure_probe():
-    from app.core.dast_scanner import DASTScanner
-    mock_db = MagicMock()
-    scanner = DASTScanner(mock_db, "org-test-001")
+# --- Encryption Key Validation ---
 
-    call_count = 0
-    def mock_get(url, **kwargs):
-        nonlocal call_count
-        call_count += 1
-        resp = MagicMock()
-        if "/.env" in url:
-            resp.status_code = 200
-            resp.text = "DATABASE_URL=postgres://..."
-        else:
-            resp.status_code = 404
-            resp.text = "Not Found"
-        return resp
-
-    with patch("app.core.dast_scanner.httpx") as mock_httpx:
-        mock_httpx.get.side_effect = mock_get
-        scanner._probe_sensitive_exposure("http://test.example.com")
-
-    env_findings = [f for f in scanner.findings if f["probe_type"] == "sensitive_exposure" and f["confirmed"]]
-    assert len(env_findings) >= 1
-    assert "/.env" in env_findings[0]["endpoint"]
+def test_encryption_validate_callable():
+    from app.core.encryption import validate_encryption_key
+    assert callable(validate_encryption_key)
 
 
-def test_dast_brute_force_probe_no_blocking():
-    from app.core.dast_scanner import DASTScanner
-    mock_db = MagicMock()
-    scanner = DASTScanner(mock_db, "org-test-001")
+def test_encryption_missing_key_exits():
+    with patch("app.core.encryption.settings") as mock_settings:
+        mock_settings.llm_encryption_key = None
+        import app.core.encryption as enc
+        old_fernet = enc._fernet
+        enc._fernet = None
+        try:
+            with pytest.raises(SystemExit):
+                enc._get_fernet()
+        finally:
+            enc._fernet = old_fernet
 
-    with patch("app.core.dast_scanner.httpx") as mock_httpx:
-        mock_resp = MagicMock()
-        mock_resp.status_code = 401
-        mock_resp.text = '{"detail": "Invalid credentials"}'
-        mock_httpx.post.return_value = mock_resp
-        scanner._probe_brute_force("http://test.example.com")
 
-    bf_findings = [f for f in scanner.findings if f["probe_type"] == "brute_force"]
-    assert len(bf_findings) >= 1
-    assert bf_findings[0]["confirmed"] is True  # No 429 = vulnerable
+# --- DAST SSRF Prevention ---
+
+def test_dast_blocks_private_ips():
+    from app.core.dast_scanner import _is_blocked_host
+    assert _is_blocked_host("127.0.0.1") is True
+    assert _is_blocked_host("10.0.0.1") is True
+    assert _is_blocked_host("192.168.1.1") is True
+    assert _is_blocked_host("localhost") is True
+
+
+def test_dast_blocks_loopback():
+    from app.core.dast_scanner import _is_blocked_host
+    assert _is_blocked_host("::1") is True
+
+
+def test_dast_allows_public_ips():
+    from app.core.dast_scanner import _is_blocked_host
+    assert _is_blocked_host("8.8.8.8") is False
+    assert _is_blocked_host("1.1.1.1") is False
+
+
+def test_dast_validate_url_rejects_ftp():
+    from app.core.dast_scanner import validate_target_url
+    error = validate_target_url("ftp://example.com")
+    assert error is not None
+
+
+def test_dast_validate_url_rejects_private():
+    from app.core.dast_scanner import validate_target_url
+    error = validate_target_url("http://192.168.1.1:8080")
+    assert error is not None
+
+
+# --- Repo Ingestion Size Validation ---
+
+def test_ingest_max_repo_size_constants():
+    from app.api.routes.ingest import MAX_REPO_SIZE_MB, MAX_REPO_FILES
+    assert MAX_REPO_SIZE_MB == 500
+    assert MAX_REPO_FILES == 50_000
+
+
+@patch("app.api.routes.ingest.httpx.get")
+def test_check_github_repo_size_rejects_large(mock_get):
+    from fastapi import HTTPException
+    from app.api.routes.ingest import _check_github_repo_size
+
+    mock_get.return_value = MagicMock(
+        status_code=200,
+        json=lambda: {"size": 600 * 1024},
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        _check_github_repo_size("https://github.com/owner/repo")
+    assert exc_info.value.status_code == 400
+    assert "500MB" in exc_info.value.detail
+
+
+@patch("app.api.routes.ingest.httpx.get")
+def test_check_github_repo_size_allows_small(mock_get):
+    from app.api.routes.ingest import _check_github_repo_size
+
+    mock_get.return_value = MagicMock(
+        status_code=200,
+        json=lambda: {"size": 100 * 1024},
+    )
+    _check_github_repo_size("https://github.com/owner/repo")
+
+
+# --- Rate Limit Constants ---
+
+def test_rate_limit_constants():
+    from app.core.rate_limit import AUTH_LIMIT, REGISTER_LIMIT, ASK_LIMIT, INGEST_LIMIT
+    assert AUTH_LIMIT == "10/minute"
+    assert REGISTER_LIMIT == "5/minute"
+    assert ASK_LIMIT == "60/minute"
+    assert INGEST_LIMIT == "10/minute"

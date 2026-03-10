@@ -12,6 +12,7 @@ class KnowledgeEntry(Base):
 
     id = Column(String(36), primary_key=True)
     org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    product_id = Column(String(36), ForeignKey("products.id"), nullable=True, index=True)
     repo_id = Column(String(36), nullable=True)
     source_type = Column(String(20), nullable=False, index=True)  # pr | commit | issue | discussion | code | document | adr
     source_id = Column(String(255), nullable=True)

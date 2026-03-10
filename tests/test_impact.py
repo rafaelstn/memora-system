@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_current_user, get_session
+from app.api.deps import get_current_product, get_current_user, get_data_session, get_session
 from app.main import app
-from tests.conftest import _fake_user
+from tests.conftest import _fake_product, _fake_user
 
 
 def _mock_session() -> MagicMock:
@@ -25,6 +25,8 @@ def admin_client():
     fake = _fake_user("admin")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -34,6 +36,8 @@ def dev_client():
     fake = _fake_user("dev")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -43,6 +47,8 @@ def suporte_client():
     fake = _fake_user("suporte")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -144,6 +150,7 @@ def test_get_analysis_completed(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/impact/ia-001")
     assert resp.status_code == 200
     data = resp.json()
@@ -183,6 +190,7 @@ def test_list_history(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/impact/history/list")
     assert resp.status_code == 200
     data = resp.json()

@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_current_user, get_session
+from app.api.deps import get_current_product, get_current_user, get_data_session, get_session
 from app.main import app
-from tests.conftest import _fake_user
+from tests.conftest import _fake_product, _fake_user
 
 
 def _mock_session() -> MagicMock:
@@ -24,6 +24,8 @@ def admin_client():
     fake = _fake_user("admin")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -33,6 +35,8 @@ def dev_client():
     fake = _fake_user("dev")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -42,6 +46,8 @@ def suporte_client():
     fake = _fake_user("suporte")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -75,6 +81,7 @@ def test_declare_incident(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.post("/api/incidents", json={
         "alert_id": "alert-001",
         "project_id": "proj-001",
@@ -163,6 +170,7 @@ def test_list_incidents(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/incidents")
     assert resp.status_code == 200
     data = resp.json()
@@ -247,6 +255,7 @@ def test_get_incident_detail(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/incidents/inc-001")
     assert resp.status_code == 200
     data = resp.json()
@@ -286,6 +295,7 @@ def test_update_status_valid_transition(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.patch("/api/incidents/inc-001/status", json={
         "status": "investigating",
     })
@@ -317,6 +327,7 @@ def test_update_status_invalid_transition(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.patch("/api/incidents/inc-001/status", json={
         "status": "resolved",
     })
@@ -347,6 +358,7 @@ def test_add_timeline_event(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.post("/api/incidents/inc-001/timeline", json={
         "content": "Reiniciado servico de pagamento",
         "event_type": "action",
@@ -392,6 +404,7 @@ def test_confirm_hypothesis(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.patch("/api/incidents/inc-001/hypotheses/hyp-001", json={
         "status": "confirmed",
     })
@@ -409,6 +422,7 @@ def test_discard_hypothesis(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.patch("/api/incidents/inc-001/hypotheses/hyp-002", json={
         "status": "discarded",
     })
@@ -426,6 +440,7 @@ def test_hypothesis_not_found(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.patch("/api/incidents/inc-001/hypotheses/nonexistent", json={
         "status": "confirmed",
     })
@@ -466,6 +481,7 @@ def test_incident_stats(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/incidents/stats")
     assert resp.status_code == 200
     data = resp.json()
@@ -621,6 +637,7 @@ def test_watchdog_check_admin(mock_email, admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.post("/api/incidents/watchdog/check")
     assert resp.status_code == 200
     assert "reminders_sent" in resp.json()
@@ -693,6 +710,7 @@ def test_get_similar_incidents_cached(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/incidents/inc-001/similar")
     assert resp.status_code == 200
     data = resp.json()
@@ -767,6 +785,7 @@ def test_create_share_token(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.post("/api/incidents/inc-001/share")
     assert resp.status_code == 200
     data = resp.json()
@@ -789,6 +808,7 @@ def test_create_share_token_no_postmortem(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.post("/api/incidents/inc-001/share")
     assert resp.status_code == 400
 
@@ -807,6 +827,7 @@ def test_create_share_token_returns_existing(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.post("/api/incidents/inc-001/share")
     assert resp.status_code == 200
     assert resp.json()["share_token"] == "existing-token-abc"
@@ -829,6 +850,7 @@ def test_revoke_share_token_not_found(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.delete("/api/incidents/inc-999/share")
     assert resp.status_code == 404
 
@@ -853,6 +875,7 @@ def test_public_postmortem():
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     client = TestClient(app)
     resp = client.get("/api/postmortem/valid-token-abc")
     assert resp.status_code == 200
@@ -875,6 +898,7 @@ def test_public_postmortem_invalid_token():
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     client = TestClient(app)
     resp = client.get("/api/postmortem/invalid-token-xyz")
     assert resp.status_code == 404

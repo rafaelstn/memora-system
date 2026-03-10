@@ -8,18 +8,19 @@ import pytest
 # ────────────────────── API Endpoints ──────────────────────
 
 def test_latest_snapshot_not_found(admin_client):
-    from app.api.deps import get_session
+    from app.api.deps import get_data_session, get_session
     from app.main import app
 
     mock_db = MagicMock()
     mock_db.execute.return_value.mappings.return_value.first.return_value = None
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
     resp = admin_client.get("/api/executive/snapshot/latest")
     assert resp.status_code == 404
 
 
 def test_latest_snapshot_ok(admin_client):
-    from app.api.deps import get_session
+    from app.api.deps import get_data_session, get_session
     from app.main import app
 
     mock_db = MagicMock()
@@ -37,6 +38,7 @@ def test_latest_snapshot_ok(admin_client):
         "metrics": "{}",
     }
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
     resp = admin_client.get("/api/executive/snapshot/latest")
     assert resp.status_code == 200
     data = resp.json()
@@ -45,7 +47,7 @@ def test_latest_snapshot_ok(admin_client):
 
 
 def test_snapshot_history(admin_client):
-    from app.api.deps import get_session
+    from app.api.deps import get_data_session, get_session
     from app.main import app
 
     mock_db = MagicMock()
@@ -72,6 +74,7 @@ def test_snapshot_history(admin_client):
 
     mock_db.execute.side_effect = side_effect
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
     resp = admin_client.get("/api/executive/snapshot/history")
     assert resp.status_code == 200
     data = resp.json()
@@ -80,12 +83,13 @@ def test_snapshot_history(admin_client):
 
 
 def test_realtime_metrics(admin_client):
-    from app.api.deps import get_session
+    from app.api.deps import get_data_session, get_session
     from app.main import app
 
     mock_db = MagicMock()
     mock_db.execute.return_value.mappings.return_value.first.return_value = {"cnt": 3}
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
     resp = admin_client.get("/api/executive/metrics")
     assert resp.status_code == 200
     data = resp.json()
@@ -96,7 +100,7 @@ def test_realtime_metrics(admin_client):
 
 
 def test_generate_snapshot(admin_client):
-    from app.api.deps import get_session
+    from app.api.deps import get_data_session, get_session
     from app.main import app
 
     mock_db = MagicMock()
@@ -106,6 +110,7 @@ def test_generate_snapshot(admin_client):
     }
     mock_db.execute.return_value.mappings.return_value.all.return_value = []
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
 
     with patch("app.core.executive_reporter.llm_router") as mock_llm:
         mock_llm.complete.return_value = {
@@ -125,7 +130,7 @@ def test_generate_snapshot(admin_client):
 
 
 def test_generate_snapshot_fallback(admin_client):
-    from app.api.deps import get_session
+    from app.api.deps import get_data_session, get_session
     from app.main import app
 
     mock_db = MagicMock()
@@ -135,6 +140,7 @@ def test_generate_snapshot_fallback(admin_client):
     }
     mock_db.execute.return_value.mappings.return_value.all.return_value = []
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
 
     with patch("app.core.executive_reporter.llm_router") as mock_llm:
         mock_llm.complete.side_effect = Exception("LLM down")

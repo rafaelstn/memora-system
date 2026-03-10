@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ChatProvider } from "@/lib/chat-context";
+import { ProductProvider } from "@/lib/product-context";
+import { ProductSelector } from "@/components/products/ProductSelector";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,9 +31,12 @@ export default function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <body className="antialiased">
         <ThemeProvider>
-          <ChatProvider>
-          {children}
-          </ChatProvider>
+          <ProductProvider>
+            <ChatProvider>
+              {children}
+            </ChatProvider>
+            <ProductSelector />
+          </ProductProvider>
           <Toaster
             position="top-right"
             toastOptions={{

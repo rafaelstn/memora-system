@@ -2,10 +2,23 @@ import { getAccessToken } from "./auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// --- Active Product ID (set by ProductContext) ---
+let _activeProductId: string | null = null;
+
+export function setActiveProductId(id: string | null) {
+  _activeProductId = id;
+}
+
+export function getActiveProductId(): string | null {
+  return _activeProductId;
+}
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const token = await getAccessToken();
-  if (!token) return {};
-  return { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (_activeProductId) headers["X-Product-ID"] = _activeProductId;
+  return headers;
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
@@ -20,6 +33,13 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     },
   });
   if (!res.ok) {
+    if (res.status === 402) {
+      // Plan expired — redirect to upgrade page
+      if (typeof window !== "undefined") {
+        window.location.href = "/upgrade";
+      }
+      throw new Error("Seu trial expirou. Redirecionando...");
+    }
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `API error: ${res.status}`);
   }
@@ -103,13 +123,16 @@ export async function askQuestionStream(
   if (providerId) body.provider_id = providerId;
   if (conversationId) body.conversation_id = conversationId;
 
+  const streamHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "true",
+    ...authHeaders,
+  };
+  if (_activeProductId) streamHeaders["X-Product-ID"] = _activeProductId;
+
   fetch(`${API_BASE}/api/ask/stream`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "true",
-      ...authHeaders,
-    },
+    headers: streamHeaders,
     body: JSON.stringify(body),
     signal: controller.signal,
   })
@@ -384,16 +407,17 @@ export async function listInvites() {
   }>>("/api/admin/invites");
 }
 
-export async function createInvite(role: string, email?: string) {
+export async function createInvite(role: string, email?: string, productId?: string) {
   return apiFetch<{
     id: string;
     token: string;
     role: string;
+    product_id: string | null;
     invite_url: string;
     expires_at: string;
   }>("/api/admin/invites", {
     method: "POST",
-    body: JSON.stringify({ role, email: email || null }),
+    body: JSON.stringify({ role, email: email || null, product_id: productId || null }),
   });
 }
 
@@ -1143,6 +1167,19 @@ export async function getRealtimeMetrics() {
   return apiFetch<ExecutiveRealtimeMetrics>("/api/executive/metrics");
 }
 
+// --- Executive History ---
+import type { ExecutiveWeeklySnapshot } from "./types";
+
+export async function getExecutiveHistory(period: "4w" | "3m" | "6m" = "4w") {
+  return apiFetch<ExecutiveWeeklySnapshot[]>(
+    `/api/executive/history?period=${period}`,
+  );
+}
+
+export function getExecutiveHistoryCsvUrl(period: "4w" | "3m" | "6m" = "4w"): string {
+  return `${API_BASE}/api/executive/history/csv?period=${period}`;
+}
+
 // --- Security Analyzer ---
 import type {
   SecurityScan,
@@ -1301,6 +1338,171 @@ export interface HealthAdminResponse {
 
 export async function getHealthAdmin() {
   return apiFetch<HealthAdminResponse>("/api/health/admin");
+}
+
+// --- Products ---
+import type { Product, ProductMember } from "./types";
+
+export async function listProducts() {
+  return apiFetch<Product[]>("/api/products");
+}
+
+export async function createProduct(data: { name: string; description?: string }) {
+  return apiFetch<Product>("/api/products", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateProduct(id: string, data: { name?: string; description?: string }) {
+  return apiFetch<Product>(`/api/products/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function archiveProduct(id: string) {
+  return apiFetch<{ archived: boolean }>(`/api/products/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function listProductMembers(productId: string) {
+  return apiFetch<ProductMember[]>(`/api/products/${productId}/members`);
+}
+
+export async function addProductMember(productId: string, userId: string) {
+  return apiFetch<{ id: string; product_id: string; user_id: string }>(
+    `/api/products/${productId}/members`,
+    { method: "POST", body: JSON.stringify({ user_id: userId }) },
+  );
+}
+
+export async function removeProductMember(productId: string, userId: string) {
+  return apiFetch<{ removed: boolean }>(
+    `/api/products/${productId}/members/${userId}`,
+    { method: "DELETE" },
+  );
+}
+
+// --- Enterprise ---
+
+export interface EnterpriseTestResult {
+  success: boolean;
+  message: string;
+  version: string | null;
+}
+
+export interface EnterpriseStatus {
+  configured: boolean;
+  setup_complete: boolean;
+  last_health_status: string | null;
+  last_health_check: string | null;
+  last_health_error: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface EnterpriseHealthResult {
+  status: "ok" | "error";
+  response_time_ms: number;
+  error: string | null;
+  previous_status: string | null;
+}
+
+export interface EnterpriseHealthLog {
+  status: string;
+  response_time_ms: number;
+  error: string | null;
+  checked_at: string | null;
+}
+
+export interface EnterpriseDBConfig {
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password: string;
+  ssl_mode?: string;
+}
+
+export async function enterpriseTestConnection(config: EnterpriseDBConfig) {
+  return apiFetch<EnterpriseTestResult>("/api/enterprise/test-connection", {
+    method: "POST",
+    body: JSON.stringify(config),
+  });
+}
+
+export async function enterpriseGetStatus() {
+  return apiFetch<EnterpriseStatus>("/api/enterprise/status");
+}
+
+export async function enterpriseHealthCheck() {
+  return apiFetch<EnterpriseHealthResult>("/api/enterprise/health-check", {
+    method: "POST",
+  });
+}
+
+export async function enterpriseHealthLog(limit = 20) {
+  return apiFetch<EnterpriseHealthLog[]>(`/api/enterprise/health-log?limit=${limit}`);
+}
+
+export async function enterpriseSetupStream(
+  config: EnterpriseDBConfig,
+  onEvent: (event: Record<string, unknown>) => void,
+  onDone: () => void,
+  onError: (err: string) => void,
+): Promise<void> {
+  const authHeaders = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/api/enterprise/setup`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
+      ...authHeaders,
+    },
+    body: JSON.stringify(config),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    onError(body.detail || `Erro ${res.status}`);
+    return;
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) {
+    onError("Stream nao disponivel");
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data: ")) continue;
+      const data = trimmed.slice(6);
+      if (data === "[DONE]") {
+        onDone();
+        return;
+      }
+      try {
+        onEvent(JSON.parse(data));
+      } catch {
+        // ignore parse errors
+      }
+    }
+  }
+  onDone();
 }
 
 // --- PDF Export ---

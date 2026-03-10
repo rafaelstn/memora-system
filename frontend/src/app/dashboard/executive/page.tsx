@@ -31,6 +31,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { ExportPDFButton } from "@/components/ui/export-pdf-button";
+import ExecutiveHistory from "@/components/executive/ExecutiveHistory";
 
 function HealthGauge({ score }: { score: number }) {
   const color =
@@ -404,6 +405,11 @@ export default function ExecutiveDashboardPage() {
           ))}
         </div>
       )}
+
+      {/* Weekly History with Chart & Table */}
+      <div className="rounded-xl border border-border bg-card-bg p-6">
+        <ExecutiveHistory />
+      </div>
     </div>
   );
 }

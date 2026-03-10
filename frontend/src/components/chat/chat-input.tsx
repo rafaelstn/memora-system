@@ -8,10 +8,11 @@ interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
   disabledMessage?: string;
+  initialValue?: string;
 }
 
-export function ChatInput({ onSend, disabled, disabledMessage }: ChatInputProps) {
-  const [value, setValue] = useState("");
+export function ChatInput({ onSend, disabled, disabledMessage, initialValue }: ChatInputProps) {
+  const [value, setValue] = useState(initialValue || "");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const adjustHeight = useCallback(() => {

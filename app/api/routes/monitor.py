@@ -7,8 +7,9 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session, require_role
+from app.api.deps import get_current_product, get_data_session, require_role
 from app.core.notifier import test_webhook as test_webhook_fn
+from app.models.product import Product
 from app.models.user import User
 
 router = APIRouter(dependencies=[Depends(require_role("admin", "dev"))])
@@ -27,8 +28,7 @@ class ProjectCreate(BaseModel):
 
 
 @router.get("/monitor/projects")
-def list_projects(db: Session = Depends(get_session), user: User = Depends(_get_user)):
-    org_id = user.org_id
+def list_projects(db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     rows = db.execute(text("""
         SELECT
             mp.*,
@@ -43,9 +43,9 @@ def list_projects(db: Session = Depends(get_session), user: User = Depends(_get_
             (SELECT MAX(le2.received_at) FROM log_entries le2
              WHERE le2.project_id = mp.id) as last_log_at
         FROM monitored_projects mp
-        WHERE mp.org_id = :org_id AND mp.is_active = true
+        WHERE mp.product_id = :product_id AND mp.is_active = true
         ORDER BY mp.created_at DESC
-    """), {"org_id": org_id}).mappings().all()
+    """), {"product_id": product.id}).mappings().all()
 
     return [
         {
@@ -64,17 +64,18 @@ def list_projects(db: Session = Depends(get_session), user: User = Depends(_get_
 
 
 @router.post("/monitor/projects")
-def create_project(body: ProjectCreate, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def create_project(body: ProjectCreate, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     project_id = str(uuid.uuid4())
     token = str(uuid.uuid4())
     token_preview = token[:8]
 
     db.execute(text("""
-        INSERT INTO monitored_projects (id, org_id, name, description, token, token_preview, created_by)
-        VALUES (:id, :org_id, :name, :description, :token, :token_preview, :created_by)
+        INSERT INTO monitored_projects (id, org_id, product_id, name, description, token, token_preview, created_by)
+        VALUES (:id, :org_id, :product_id, :name, :description, :token, :token_preview, :created_by)
     """), {
         "id": project_id,
         "org_id": user.org_id,
+        "product_id": product.id,
         "name": body.name,
         "description": body.description,
         "token": token,
@@ -93,10 +94,10 @@ def create_project(body: ProjectCreate, db: Session = Depends(get_session), user
 
 
 @router.delete("/monitor/projects/{project_id}")
-def delete_project(project_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def delete_project(project_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     result = db.execute(
-        text("UPDATE monitored_projects SET is_active = false WHERE id = :id AND org_id = :org_id"),
-        {"id": project_id, "org_id": user.org_id},
+        text("UPDATE monitored_projects SET is_active = false WHERE id = :id AND product_id = :product_id"),
+        {"id": project_id, "product_id": product.id},
     )
     db.commit()
     if result.rowcount == 0:
@@ -105,15 +106,15 @@ def delete_project(project_id: str, db: Session = Depends(get_session), user: Us
 
 
 @router.post("/monitor/projects/{project_id}/rotate-token")
-def rotate_token(project_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def rotate_token(project_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     new_token = str(uuid.uuid4())
     result = db.execute(
         text("""
             UPDATE monitored_projects
             SET token = :token, token_preview = :preview, updated_at = now()
-            WHERE id = :id AND org_id = :org_id AND is_active = true
+            WHERE id = :id AND product_id = :product_id AND is_active = true
         """),
-        {"token": new_token, "preview": new_token[:8], "id": project_id, "org_id": user.org_id},
+        {"token": new_token, "preview": new_token[:8], "id": project_id, "product_id": product.id},
     )
     db.commit()
     if result.rowcount == 0:
@@ -122,10 +123,10 @@ def rotate_token(project_id: str, db: Session = Depends(get_session), user: User
 
 
 @router.get("/monitor/projects/{project_id}")
-def get_project(project_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def get_project(project_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     row = db.execute(
-        text("SELECT * FROM monitored_projects WHERE id = :id AND org_id = :org_id"),
-        {"id": project_id, "org_id": user.org_id},
+        text("SELECT * FROM monitored_projects WHERE id = :id AND product_id = :product_id"),
+        {"id": project_id, "product_id": product.id},
     ).mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Projeto nao encontrado")
@@ -145,10 +146,10 @@ def list_alerts(
     severity: str | None = Query(None),
     status: str | None = Query(None),
     page: int = Query(1, ge=1),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
-    org_id = user.org_id
     per_page = 50
     offset = (page - 1) * per_page
 
@@ -156,9 +157,9 @@ def list_alerts(
         SELECT ea.*, mp.name as project_name
         FROM error_alerts ea
         JOIN monitored_projects mp ON mp.id = ea.project_id
-        WHERE ea.org_id = :org_id
+        WHERE mp.product_id = :product_id
     """
-    params: dict = {"org_id": org_id, "limit": per_page, "offset": offset}
+    params: dict = {"product_id": product.id, "limit": per_page, "offset": offset}
 
     if project_id:
         query += " AND ea.project_id = :project_id"
@@ -190,15 +191,15 @@ def list_alerts(
 
 
 @router.get("/monitor/alerts/{alert_id}")
-def get_alert(alert_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def get_alert(alert_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     alert = db.execute(
         text("""
             SELECT ea.*, mp.name as project_name
             FROM error_alerts ea
             JOIN monitored_projects mp ON mp.id = ea.project_id
-            WHERE ea.id = :id AND ea.org_id = :org_id
+            WHERE ea.id = :id AND mp.product_id = :product_id
         """),
-        {"id": alert_id, "org_id": user.org_id},
+        {"id": alert_id, "product_id": product.id},
     ).mappings().first()
 
     if not alert:
@@ -230,8 +231,9 @@ class AlertStatusUpdate(BaseModel):
 def update_alert_status(
     alert_id: str,
     body: AlertStatusUpdate,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     if body.status not in ("acknowledged", "resolved"):
         raise HTTPException(status_code=400, detail="Status invalido. Use: acknowledged, resolved")
@@ -239,7 +241,7 @@ def update_alert_status(
     from app.core.query_builder import build_set_clause
 
     update_parts = ["status = :status"]
-    params: dict = {"status": body.status, "id": alert_id, "org_id": user.org_id}
+    params: dict = {"status": body.status, "id": alert_id, "product_id": product.id}
 
     if body.status == "acknowledged":
         update_parts += ["acknowledged_by = :user_id", "acknowledged_at = now()"]
@@ -250,7 +252,7 @@ def update_alert_status(
 
     set_clause = build_set_clause("error_alerts", update_parts)
     result = db.execute(
-        text(f"UPDATE error_alerts SET {set_clause} WHERE id = :id AND org_id = :org_id"),
+        text(f"UPDATE error_alerts SET {set_clause} WHERE id = :id AND project_id IN (SELECT id FROM monitored_projects WHERE product_id = :product_id)"),
         params,
     )
     db.commit()
@@ -268,30 +270,35 @@ def list_logs(
     start_date: str | None = Query(None),
     end_date: str | None = Query(None),
     page: int = Query(1, ge=1),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
-    org_id = user.org_id
     per_page = 50
     offset = (page - 1) * per_page
 
-    query = "SELECT * FROM log_entries WHERE org_id = :org_id"
-    params: dict = {"org_id": org_id, "limit": per_page, "offset": offset}
+    query = """
+        SELECT log_entries.*
+        FROM log_entries
+        JOIN monitored_projects mp ON mp.id = log_entries.project_id
+        WHERE mp.product_id = :product_id
+    """
+    params: dict = {"product_id": product.id, "limit": per_page, "offset": offset}
 
     if project_id:
-        query += " AND project_id = :project_id"
+        query += " AND log_entries.project_id = :project_id"
         params["project_id"] = project_id
     if level:
-        query += " AND level = :level"
+        query += " AND log_entries.level = :level"
         params["level"] = level
     if start_date:
-        query += " AND received_at >= :start_date"
+        query += " AND log_entries.received_at >= :start_date"
         params["start_date"] = start_date
     if end_date:
-        query += " AND received_at <= :end_date"
+        query += " AND log_entries.received_at <= :end_date"
         params["end_date"] = end_date
 
-    query += " ORDER BY received_at DESC LIMIT :limit OFFSET :offset"
+    query += " ORDER BY log_entries.received_at DESC LIMIT :limit OFFSET :offset"
     rows = db.execute(text(query), params).mappings().all()
 
     return [
@@ -319,7 +326,7 @@ class WebhookCreate(BaseModel):
 
 
 @router.get("/monitor/webhooks")
-def list_webhooks(db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def list_webhooks(db: Session = Depends(get_data_session), user: User = Depends(_get_user)):
     rows = db.execute(
         text("SELECT * FROM alert_webhooks WHERE org_id = :org_id ORDER BY created_at DESC"),
         {"org_id": user.org_id},
@@ -328,7 +335,7 @@ def list_webhooks(db: Session = Depends(get_session), user: User = Depends(_get_
 
 
 @router.post("/monitor/webhooks")
-def create_webhook(body: WebhookCreate, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def create_webhook(body: WebhookCreate, db: Session = Depends(get_data_session), user: User = Depends(_get_user)):
     wh_id = str(uuid.uuid4())
     db.execute(text("""
         INSERT INTO alert_webhooks (id, org_id, name, url, created_by)
@@ -345,7 +352,7 @@ def create_webhook(body: WebhookCreate, db: Session = Depends(get_session), user
 
 
 @router.delete("/monitor/webhooks/{webhook_id}")
-def delete_webhook(webhook_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def delete_webhook(webhook_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user)):
     result = db.execute(
         text("DELETE FROM alert_webhooks WHERE id = :id AND org_id = :org_id"),
         {"id": webhook_id, "org_id": user.org_id},
@@ -357,7 +364,7 @@ def delete_webhook(webhook_id: str, db: Session = Depends(get_session), user: Us
 
 
 @router.post("/monitor/webhooks/{webhook_id}/test")
-def test_webhook_endpoint(webhook_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def test_webhook_endpoint(webhook_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user)):
     wh = db.execute(
         text("SELECT url FROM alert_webhooks WHERE id = :id AND org_id = :org_id"),
         {"id": webhook_id, "org_id": user.org_id},

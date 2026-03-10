@@ -9,9 +9,10 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_session, require_role
+from app.api.deps import get_current_product, get_current_user, get_data_session, require_role
 from app.core.embedder import Embedder
 from app.db.session import SessionLocal
+from app.models.product import Product
 from app.models.user import User
 
 # Restricted router (admin + dev)
@@ -51,6 +52,7 @@ def extract_rules(
     repo_name: str,
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Dispara extracao completa de regras em background."""
     background_tasks.add_task(_extract_rules_bg, repo_name, user.org_id)
@@ -60,8 +62,9 @@ def extract_rules(
 @router.get("/rules/extract/status/{repo_name}")
 def extract_status(
     repo_name: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Status da extracao — conta regras existentes."""
     row = db.execute(text("""
@@ -69,8 +72,8 @@ def extract_status(
                MAX(extracted_at) as last_extracted,
                SUM(CASE WHEN changed_in_last_push THEN 1 ELSE 0 END) as changed
         FROM business_rules
-        WHERE org_id = :org_id AND repo_name = :repo_name AND is_active = true
-    """), {"org_id": user.org_id, "repo_name": repo_name}).mappings().first()
+        WHERE product_id = :product_id AND repo_name = :repo_name AND is_active = true
+    """), {"product_id": product.id, "repo_name": repo_name}).mappings().first()
 
     return {
         "total_rules": row["total"] if row else 0,
@@ -87,14 +90,15 @@ def list_rules(
     rule_type: str = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Lista regras com filtros."""
     from app.core.query_builder import build_where_clause
 
-    conditions = ["org_id = :org_id", "is_active = true"]
-    params: dict = {"org_id": user.org_id}
+    conditions = ["product_id = :product_id", "is_active = true"]
+    params: dict = {"product_id": product.id}
 
     if repo_name:
         conditions.append("repo_name = :repo_name")
@@ -146,8 +150,9 @@ def list_rules(
 def search_rules(
     q: str = Query(..., min_length=2),
     repo_name: str = Query(None),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Busca semantica nas regras."""
     embedder = Embedder()
@@ -155,7 +160,7 @@ def search_rules(
 
     repo_filter = "AND repo_name = :repo_name" if repo_name else ""
     params: dict = {
-        "org_id": user.org_id,
+        "product_id": product.id,
         "embedding": str(embedding),
         "top_k": 10,
     }
@@ -167,7 +172,7 @@ def search_rules(
                confidence, affected_files,
                embedding <=> CAST(:embedding AS vector) AS distance
         FROM business_rules
-        WHERE org_id = :org_id AND is_active = true AND embedding IS NOT NULL
+        WHERE product_id = :product_id AND is_active = true AND embedding IS NOT NULL
           {repo_filter}
         ORDER BY embedding <=> CAST(:embedding AS vector)
         LIMIT :top_k
@@ -192,8 +197,9 @@ def search_rules(
 @public_router.get("/rules/{rule_id}")
 def get_rule(
     rule_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Detalhe completo de uma regra."""
     row = db.execute(text("""
@@ -202,8 +208,8 @@ def get_rule(
                is_active, changed_in_last_push, last_verified_at,
                extracted_at, created_at, updated_at
         FROM business_rules
-        WHERE id = :id AND org_id = :org_id
-    """), {"id": rule_id, "org_id": user.org_id}).mappings().first()
+        WHERE id = :id AND product_id = :product_id
+    """), {"id": rule_id, "product_id": product.id}).mappings().first()
 
     if not row:
         raise HTTPException(status_code=404, detail="Regra nao encontrada")
@@ -270,8 +276,9 @@ def get_rule(
 def simulate_rule(
     rule_id: str,
     body: SimulateRequest,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Simula uma regra com valores de entrada."""
     from app.core.rules_simulator import RulesSimulator
@@ -290,12 +297,13 @@ def simulate_rule(
 def list_alerts(
     repo_name: str = Query(None),
     acknowledged: bool = Query(False),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Lista alertas de mudanca de regras."""
-    conditions = ["a.org_id = :org_id"]
-    params: dict = {"org_id": user.org_id}
+    conditions = ["r.product_id = :product_id"]
+    params: dict = {"product_id": product.id}
 
     if not acknowledged:
         conditions.append("a.acknowledged_by IS NULL")
@@ -336,8 +344,9 @@ def list_alerts(
 @router.patch("/rules/alerts/{alert_id}/acknowledge")
 def acknowledge_alert(
     alert_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Marca alerta como reconhecido."""
     result = db.execute(text("""

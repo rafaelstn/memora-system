@@ -20,6 +20,7 @@ def _fake_org(onboarding_completed=False, onboarding_step=0, name="Test Org"):
     org.onboarding_step = onboarding_step
     org.onboarding_completed_at = None
     org.settings = {}
+    org.mode = "saas"
     return org
 
 

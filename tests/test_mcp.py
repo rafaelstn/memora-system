@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_current_user, get_session
+from app.api.deps import get_current_user, get_data_session, get_session
 from app.main import app
 from tests.conftest import _fake_user
 
@@ -25,6 +25,7 @@ def admin_client():
     fake = _fake_user("admin")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -34,6 +35,7 @@ def dev_client():
     fake = _fake_user("dev")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -43,6 +45,7 @@ def suporte_client():
     fake = _fake_user("suporte")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -66,6 +69,7 @@ def test_tool_call_no_token():
     """Request without token returns 401."""
     client = TestClient(app)
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
     resp = client.post("/mcp/tools/call", json={"name": "search_similar_code", "arguments": {"query": "test"}})
     assert resp.status_code == 401
     app.dependency_overrides.clear()
@@ -75,6 +79,7 @@ def test_tool_call_invalid_token():
     """Request with invalid token returns 401."""
     client = TestClient(app)
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
     resp = client.post(
         "/mcp/tools/call",
         json={"name": "search_similar_code", "arguments": {"query": "test"}},
@@ -128,6 +133,7 @@ def test_search_similar_code_with_valid_token(mock_embedder_cls):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     client = TestClient(app)
 
     resp = client.post(
@@ -183,6 +189,7 @@ def test_get_business_rules_with_context(mock_embedder_cls):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     client = TestClient(app)
 
     resp = client.post(
@@ -230,6 +237,7 @@ def test_get_team_patterns_returns_result():
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     client = TestClient(app)
 
     with patch("mcp.tools.get_patterns.Embedder") as MockEmb:
@@ -286,6 +294,7 @@ def test_revoke_token_no_active(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.delete("/api/mcp/token")
     assert resp.status_code == 404
 

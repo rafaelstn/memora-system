@@ -9,8 +9,9 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_session, require_role
+from app.api.deps import get_current_product, get_current_user, get_data_session, require_role
 from app.core import email_client
+from app.models.product import Product
 from app.models.user import User
 
 router = APIRouter(prefix="/incidents")
@@ -109,8 +110,9 @@ def _notify_incident(db: Session, incident_id: str, event: str):
 def declare_incident(
     body: DeclareIncidentRequest,
     bg: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Declare a new incident."""
     if body.severity not in ("low", "medium", "high", "critical"):
@@ -122,8 +124,10 @@ def declare_incident(
     # If from alert, use alert data if title not provided
     if body.alert_id and not title:
         alert = db.execute(
-            text("SELECT title FROM error_alerts WHERE id = :id AND org_id = :org_id"),
-            {"id": body.alert_id, "org_id": user.org_id},
+            text("""SELECT title FROM error_alerts
+                    WHERE id = :id
+                    AND project_id IN (SELECT id FROM monitored_projects WHERE product_id = :product_id)"""),
+            {"id": body.alert_id, "product_id": product.id},
         ).mappings().first()
         if alert:
             title = alert["title"]
@@ -199,12 +203,13 @@ def list_incidents(
     status: str | None = None,
     project_id: str | None = None,
     page: int = 1,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """List incidents with optional filters."""
-    conditions = ["i.org_id = :org_id"]
-    params: dict = {"org_id": user.org_id}
+    conditions = ["mp.product_id = :product_id"]
+    params: dict = {"product_id": product.id}
 
     if status:
         conditions.append("i.status = :status")
@@ -233,7 +238,9 @@ def list_incidents(
     ).mappings().all()
 
     total_row = db.execute(
-        text(f"SELECT COUNT(*) as cnt FROM incidents i WHERE {where}"),
+        text(f"""SELECT COUNT(*) as cnt FROM incidents i
+                 JOIN monitored_projects mp ON mp.id = i.project_id
+                 WHERE {where}"""),
         {k: v for k, v in params.items() if k not in ("limit", "offset")},
     ).mappings().first()
 
@@ -246,7 +253,7 @@ def list_incidents(
 
 @router.post("/watchdog/check")
 def trigger_watchdog(
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin")),
 ):
     """Manually trigger the stale incident watchdog."""
@@ -257,30 +264,32 @@ def trigger_watchdog(
 
 @router.get("/stats")
 def incident_stats(
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Return incident statistics with enhanced metrics."""
     stats = db.execute(
         text("""
             SELECT
-                COUNT(*) FILTER (WHERE status IN ('open', 'investigating')) as active,
-                COUNT(*) FILTER (WHERE status = 'resolved'
-                    AND resolved_at >= now() - INTERVAL '30 days') as resolved_month,
+                COUNT(*) FILTER (WHERE incidents.status IN ('open', 'investigating')) as active,
+                COUNT(*) FILTER (WHERE incidents.status = 'resolved'
+                    AND incidents.resolved_at >= now() - INTERVAL '30 days') as resolved_month,
                 COUNT(*) as total,
-                AVG(EXTRACT(EPOCH FROM (resolved_at - declared_at)) / 3600)
-                    FILTER (WHERE status = 'resolved') as avg_hours,
-                AVG(EXTRACT(EPOCH FROM (resolved_at - declared_at)) / 3600)
-                    FILTER (WHERE status = 'resolved'
-                        AND resolved_at >= now() - INTERVAL '7 days') as avg_hours_7d,
-                AVG(EXTRACT(EPOCH FROM (resolved_at - declared_at)) / 3600)
-                    FILTER (WHERE status = 'resolved'
-                        AND resolved_at >= now() - INTERVAL '30 days'
-                        AND resolved_at < now() - INTERVAL '7 days') as avg_hours_prev
+                AVG(EXTRACT(EPOCH FROM (incidents.resolved_at - incidents.declared_at)) / 3600)
+                    FILTER (WHERE incidents.status = 'resolved') as avg_hours,
+                AVG(EXTRACT(EPOCH FROM (incidents.resolved_at - incidents.declared_at)) / 3600)
+                    FILTER (WHERE incidents.status = 'resolved'
+                        AND incidents.resolved_at >= now() - INTERVAL '7 days') as avg_hours_7d,
+                AVG(EXTRACT(EPOCH FROM (incidents.resolved_at - incidents.declared_at)) / 3600)
+                    FILTER (WHERE incidents.status = 'resolved'
+                        AND incidents.resolved_at >= now() - INTERVAL '30 days'
+                        AND incidents.resolved_at < now() - INTERVAL '7 days') as avg_hours_prev
             FROM incidents
-            WHERE org_id = :org_id
+            JOIN monitored_projects mp ON mp.id = incidents.project_id
+            WHERE mp.product_id = :product_id
         """),
-        {"org_id": user.org_id},
+        {"product_id": product.id},
     ).mappings().first()
 
     # Most affected project
@@ -289,12 +298,12 @@ def incident_stats(
             SELECT mp.name, COUNT(*) as cnt
             FROM incidents i
             JOIN monitored_projects mp ON mp.id = i.project_id
-            WHERE i.org_id = :org_id AND i.declared_at >= now() - INTERVAL '30 days'
+            WHERE mp.product_id = :product_id AND i.declared_at >= now() - INTERVAL '30 days'
             GROUP BY mp.name
             ORDER BY cnt DESC
             LIMIT 1
         """),
-        {"org_id": user.org_id},
+        {"product_id": product.id},
     ).mappings().first()
 
     avg_hours = round(float(stats["avg_hours"]), 1) if stats and stats["avg_hours"] else None
@@ -321,8 +330,9 @@ def incident_stats(
 @router.get("/{incident_id}")
 def get_incident(
     incident_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Get incident detail with timeline and hypotheses."""
     inc = db.execute(
@@ -331,9 +341,9 @@ def get_incident(
             FROM incidents i
             JOIN monitored_projects mp ON mp.id = i.project_id
             LEFT JOIN users u ON u.id = i.declared_by
-            WHERE i.id = :id AND i.org_id = :org_id
+            WHERE i.id = :id AND mp.product_id = :product_id
         """),
-        {"id": incident_id, "org_id": user.org_id},
+        {"id": incident_id, "product_id": product.id},
     ).mappings().first()
 
     if not inc:
@@ -371,14 +381,17 @@ def get_incident(
 @router.get("/{incident_id}/timeline")
 def get_timeline(
     incident_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """List timeline events for an incident."""
     # Verify access
     inc = db.execute(
-        text("SELECT id FROM incidents WHERE id = :id AND org_id = :org_id"),
-        {"id": incident_id, "org_id": user.org_id},
+        text("""SELECT i.id FROM incidents i
+                JOIN monitored_projects mp ON mp.id = i.project_id
+                WHERE i.id = :id AND mp.product_id = :product_id"""),
+        {"id": incident_id, "product_id": product.id},
     ).mappings().first()
     if not inc:
         raise HTTPException(404, "Incidente nao encontrado")
@@ -401,16 +414,19 @@ def get_timeline(
 def add_timeline_event(
     incident_id: str,
     body: TimelineEventRequest,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Add an event to the incident timeline."""
     if body.event_type not in ("action", "update", "comment"):
         raise HTTPException(400, "Tipo de evento invalido")
 
     inc = db.execute(
-        text("SELECT id FROM incidents WHERE id = :id AND org_id = :org_id"),
-        {"id": incident_id, "org_id": user.org_id},
+        text("""SELECT i.id FROM incidents i
+                JOIN monitored_projects mp ON mp.id = i.project_id
+                WHERE i.id = :id AND mp.product_id = :product_id"""),
+        {"id": incident_id, "product_id": product.id},
     ).mappings().first()
     if not inc:
         raise HTTPException(404, "Incidente nao encontrado")
@@ -441,13 +457,16 @@ def update_status(
     incident_id: str,
     body: UpdateStatusRequest,
     bg: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Update incident status with valid transitions."""
     inc = db.execute(
-        text("SELECT id, status, org_id FROM incidents WHERE id = :id AND org_id = :org_id"),
-        {"id": incident_id, "org_id": user.org_id},
+        text("""SELECT i.id, i.status, i.org_id FROM incidents i
+                JOIN monitored_projects mp ON mp.id = i.project_id
+                WHERE i.id = :id AND mp.product_id = :product_id"""),
+        {"id": incident_id, "product_id": product.id},
     ).mappings().first()
     if not inc:
         raise HTTPException(404, "Incidente nao encontrado")
@@ -523,8 +542,9 @@ def update_hypothesis(
     incident_id: str,
     hypothesis_id: str,
     body: UpdateHypothesisRequest,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Confirm or discard a hypothesis."""
     if body.status not in ("confirmed", "discarded"):
@@ -534,14 +554,19 @@ def update_hypothesis(
         text("""
             UPDATE incident_hypotheses
             SET status = :status, confirmed_by = :user_id
-            WHERE id = :id AND incident_id = :incident_id AND org_id = :org_id
+            WHERE id = :id AND incident_id = :incident_id
+            AND incident_id IN (
+                SELECT i.id FROM incidents i
+                JOIN monitored_projects mp ON mp.id = i.project_id
+                WHERE mp.product_id = :product_id
+            )
         """),
         {
             "status": body.status,
             "user_id": user.id,
             "id": hypothesis_id,
             "incident_id": incident_id,
-            "org_id": user.org_id,
+            "product_id": product.id,
         },
     )
     if result.rowcount == 0:
@@ -578,13 +603,16 @@ def update_hypothesis(
 def get_similar_incidents(
     incident_id: str,
     bg: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Get or compute similar resolved incidents."""
     inc = db.execute(
-        text("SELECT id FROM incidents WHERE id = :id AND org_id = :org_id"),
-        {"id": incident_id, "org_id": user.org_id},
+        text("""SELECT i.id FROM incidents i
+                JOIN monitored_projects mp ON mp.id = i.project_id
+                WHERE i.id = :id AND mp.product_id = :product_id"""),
+        {"id": incident_id, "product_id": product.id},
     ).mappings().first()
     if not inc:
         raise HTTPException(404, "Incidente nao encontrado")
@@ -629,13 +657,16 @@ def _run_find_similar(db: Session, incident_id: str, org_id: str):
 @router.post("/{incident_id}/share")
 def create_share_token(
     incident_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Generate a share token for public post-mortem access."""
     inc = db.execute(
-        text("SELECT id, share_token, postmortem FROM incidents WHERE id = :id AND org_id = :org_id"),
-        {"id": incident_id, "org_id": user.org_id},
+        text("""SELECT id, share_token, postmortem FROM incidents
+                WHERE id = :id
+                AND project_id IN (SELECT id FROM monitored_projects WHERE product_id = :product_id)"""),
+        {"id": incident_id, "product_id": product.id},
     ).mappings().first()
     if not inc:
         raise HTTPException(404, "Incidente nao encontrado")
@@ -663,13 +694,16 @@ def create_share_token(
 @router.delete("/{incident_id}/share")
 def revoke_share_token(
     incident_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Revoke the share token for a post-mortem."""
     result = db.execute(
-        text("UPDATE incidents SET share_token = NULL WHERE id = :id AND org_id = :org_id"),
-        {"id": incident_id, "org_id": user.org_id},
+        text("""UPDATE incidents SET share_token = NULL
+                WHERE id = :id
+                AND project_id IN (SELECT id FROM monitored_projects WHERE product_id = :product_id)"""),
+        {"id": incident_id, "product_id": product.id},
     )
     if result.rowcount == 0:
         raise HTTPException(404, "Incidente nao encontrado")
@@ -685,7 +719,7 @@ public_router = APIRouter()
 @public_router.get("/api/postmortem/{share_token}")
 def get_public_postmortem(
     share_token: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
 ):
     """Public endpoint to view a shared post-mortem (no auth required)."""
     inc = db.execute(
@@ -716,8 +750,9 @@ def get_public_postmortem(
 @router.get("/{incident_id}/postmortem/pdf")
 def download_postmortem_pdf(
     incident_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Download post-mortem as PDF."""
     inc = db.execute(
@@ -726,9 +761,9 @@ def download_postmortem_pdf(
             FROM incidents i
             JOIN monitored_projects mp ON mp.id = i.project_id
             LEFT JOIN users u ON u.id = i.declared_by
-            WHERE i.id = :id AND i.org_id = :org_id
+            WHERE i.id = :id AND mp.product_id = :product_id
         """),
-        {"id": incident_id, "org_id": user.org_id},
+        {"id": incident_id, "product_id": product.id},
     ).mappings().first()
 
     if not inc:

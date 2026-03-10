@@ -18,11 +18,16 @@ import {
   Code2,
   GitCompare,
   LineChart,
+  Package,
+  Search,
+  Download,
+  Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoleBadge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { ProductSwitcher } from "@/components/products/ProductSwitcher";
 import { useState, useEffect } from "react";
 import { getIncidentStats } from "@/lib/api";
 
@@ -39,7 +44,11 @@ const navItems = [
 
 const adminItems = [
   { href: "/dashboard/metrics", label: "Metricas", icon: BarChart3 },
+  { href: "/dashboard/executive", label: "Painel Executivo", icon: LineChart },
   { href: "/dashboard/admin/users", label: "Usuarios", icon: Users },
+  { href: "/dashboard/admin/produtos", label: "Produtos", icon: Package },
+  { href: "/dashboard/admin/exportar", label: "Exportar Dados", icon: Download },
+  { href: "/dashboard/admin/planos", label: "Planos", icon: Crown },
   { href: "/dashboard/settings", label: "Configuracoes", icon: Settings },
 ];
 
@@ -101,6 +110,33 @@ export function DashboardSidebar() {
           >
             {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
+        </div>
+
+        {/* Search button */}
+        <div className="border-b border-border px-3 py-2">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("open-global-search"))}
+            className={cn(
+              "flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm text-muted hover:bg-hover hover:text-foreground transition-colors",
+              collapsed && "justify-center"
+            )}
+            title="Buscar (Ctrl+K)"
+          >
+            <Search size={18} />
+            {!collapsed && (
+              <>
+                <span>Buscar...</span>
+                <kbd className="ml-auto text-[10px] bg-muted/10 border border-border rounded px-1.5 py-0.5">
+                  Ctrl+K
+                </kbd>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Product switcher */}
+        <div className="border-b border-border px-3 py-2">
+          <ProductSwitcher />
         </div>
 
         {/* Nav */}

@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_session, require_role
+from app.api.deps import get_current_product, get_current_user, get_data_session, require_role
+from app.models.product import Product
 from app.models.user import User
 
 router = APIRouter(prefix="/security")
@@ -26,19 +27,21 @@ class DASTScanRequest(BaseModel):
 def start_security_scan(
     req: ScanRequest,
     bg: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Start a new security scan for a repo."""
     scan_id = str(uuid.uuid4())
     db.execute(
         text("""
-            INSERT INTO security_scans (id, org_id, repo_name, requested_by, status)
-            VALUES (:id, :org_id, :repo, :user_id, 'analyzing')
+            INSERT INTO security_scans (id, org_id, product_id, repo_name, requested_by, status)
+            VALUES (:id, :org_id, :product_id, :repo, :user_id, 'analyzing')
         """),
         {
             "id": scan_id,
             "org_id": user.org_id,
+            "product_id": product.id,
             "repo": req.repo_name,
             "user_id": user.id,
         },
@@ -55,16 +58,17 @@ def start_security_scan(
 @router.get("/scan/{scan_id}")
 def get_security_scan(
     scan_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Get scan details."""
     row = db.execute(
         text("""
             SELECT * FROM security_scans
-            WHERE id = :id AND org_id = :org_id
+            WHERE id = :id AND product_id = :product_id
         """),
-        {"id": scan_id, "org_id": user.org_id},
+        {"id": scan_id, "product_id": product.id},
     ).mappings().first()
 
     if not row:
@@ -77,8 +81,9 @@ def get_scan_findings(
     scan_id: str,
     severity: str | None = None,
     scanner: str | None = None,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Get findings for a scan."""
     q = """
@@ -101,8 +106,9 @@ def get_scan_findings(
 @router.get("/scan/{scan_id}/dependencies")
 def get_dependency_alerts(
     scan_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Get dependency alerts for a scan."""
     rows = db.execute(
@@ -120,14 +126,15 @@ def get_dependency_alerts(
 def list_security_scans(
     repo_name: str | None = None,
     page: int = 1,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """List past security scans."""
     limit = 20
     offset = (page - 1) * limit
-    q = "SELECT * FROM security_scans WHERE org_id = :org_id"
-    params: dict = {"org_id": user.org_id, "limit": limit, "offset": offset}
+    q = "SELECT * FROM security_scans WHERE product_id = :product_id"
+    params: dict = {"product_id": product.id, "limit": limit, "offset": offset}
     if repo_name:
         q += " AND repo_name = :repo"
         params["repo"] = repo_name
@@ -135,8 +142,8 @@ def list_security_scans(
 
     rows = db.execute(text(q), params).mappings().all()
 
-    count_q = "SELECT COUNT(*) as cnt FROM security_scans WHERE org_id = :org_id"
-    count_params: dict = {"org_id": user.org_id}
+    count_q = "SELECT COUNT(*) as cnt FROM security_scans WHERE product_id = :product_id"
+    count_params: dict = {"product_id": product.id}
     if repo_name:
         count_q += " AND repo_name = :repo"
         count_params["repo"] = repo_name
@@ -151,8 +158,9 @@ def list_security_scans(
 
 @router.get("/stats")
 def security_stats(
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Get aggregated security stats."""
     latest = db.execute(
@@ -160,11 +168,11 @@ def security_stats(
             SELECT repo_name, security_score, total_findings, critical_count,
                    high_count, created_at
             FROM security_scans
-            WHERE org_id = :org_id AND status = 'completed'
+            WHERE product_id = :product_id AND status = 'completed'
             ORDER BY created_at DESC
             LIMIT 10
         """),
-        {"org_id": user.org_id},
+        {"product_id": product.id},
     ).mappings().all()
 
     avg_score = None
@@ -187,28 +195,34 @@ def security_stats(
 def start_dast_scan(
     req: DASTScanRequest,
     bg: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin")),
+    product: Product = Depends(get_current_product),
 ):
     """Start a DAST scan (admin only)."""
     if req.target_env not in ("development", "staging"):
         raise HTTPException(400, "Ambiente deve ser 'development' ou 'staging'.")
 
-    from app.core.dast_scanner import validate_target_url
+    from app.core.dast_scanner import validate_target_url, validate_target_scope
     error = validate_target_url(req.target_url)
     if error:
-        raise HTTPException(400, error)
+        raise HTTPException(403, error)
+
+    scope_error = validate_target_scope(req.target_url, db, user.org_id)
+    if scope_error:
+        raise HTTPException(403, scope_error)
 
     scan_id = str(uuid.uuid4())
     db.execute(
         text("""
             INSERT INTO dast_scans
-                (id, org_id, requested_by, target_url, target_env, status, probes_total)
-            VALUES (:id, :org_id, :user_id, :url, :env, 'running', 10)
+                (id, org_id, product_id, requested_by, target_url, target_env, status, probes_total)
+            VALUES (:id, :org_id, :product_id, :user_id, :url, :env, 'running', 10)
         """),
         {
             "id": scan_id,
             "org_id": user.org_id,
+            "product_id": product.id,
             "user_id": user.id,
             "url": req.target_url,
             "env": req.target_env,
@@ -226,8 +240,9 @@ def start_dast_scan(
 @router.get("/dast/scan/{scan_id}")
 def get_dast_scan(
     scan_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin")),
+    product: Product = Depends(get_current_product),
 ):
     """Get DAST scan progress/result."""
     row = db.execute(
@@ -242,8 +257,9 @@ def get_dast_scan(
 @router.get("/dast/scan/{scan_id}/findings")
 def get_dast_findings(
     scan_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin")),
+    product: Product = Depends(get_current_product),
 ):
     """Get DAST findings."""
     rows = db.execute(
@@ -262,8 +278,9 @@ def get_dast_findings(
 @router.get("/dast/scans")
 def list_dast_scans(
     page: int = 1,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin")),
+    product: Product = Depends(get_current_product),
 ):
     """List past DAST scans."""
     limit = 20
@@ -271,16 +288,16 @@ def list_dast_scans(
     rows = db.execute(
         text("""
             SELECT * FROM dast_scans
-            WHERE org_id = :org_id
+            WHERE product_id = :product_id
             ORDER BY created_at DESC
             LIMIT :limit OFFSET :offset
         """),
-        {"org_id": user.org_id, "limit": limit, "offset": offset},
+        {"product_id": product.id, "limit": limit, "offset": offset},
     ).mappings().all()
 
     total = db.execute(
-        text("SELECT COUNT(*) as cnt FROM dast_scans WHERE org_id = :org_id"),
-        {"org_id": user.org_id},
+        text("SELECT COUNT(*) as cnt FROM dast_scans WHERE product_id = :product_id"),
+        {"product_id": product.id},
     ).mappings().first()
 
     return {
@@ -296,8 +313,9 @@ def list_dast_scans(
 @router.get("/scan/{scan_id}/report/pdf")
 def download_security_pdf(
     scan_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Download security audit report as PDF."""
     scan = db.execute(
@@ -330,8 +348,9 @@ def download_security_pdf(
 @router.get("/dast/scan/{scan_id}/report/pdf")
 def download_dast_pdf(
     scan_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin")),
+    product: Product = Depends(get_current_product),
 ):
     """Download DAST scan report as PDF."""
     scan = db.execute(

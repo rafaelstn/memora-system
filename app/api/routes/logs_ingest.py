@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
+from app.api.deps import get_data_session
 from app.core.log_analyzer import analyze
 from app.core.notifier import notify_alert
 
@@ -38,7 +38,7 @@ class BatchLogPayload(BaseModel):
     metadata: dict | None = None
 
 
-def _authenticate_project(authorization: str | None = Header(None), db: Session = Depends(get_session)):
+def _authenticate_project(authorization: str | None = Header(None), db: Session = Depends(get_data_session)):
     """Authenticate by project token from Authorization header."""
     if not authorization:
         raise HTTPException(status_code=401, detail="Token de projeto obrigatorio")
@@ -121,7 +121,7 @@ def ingest_logs(
     body: BatchLogPayload,
     background_tasks: BackgroundTasks,
     project: dict = Depends(_authenticate_project),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
 ):
     """Receive logs from external systems. Authenticates via project token."""
     project_id = project["id"]

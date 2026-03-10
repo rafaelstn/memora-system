@@ -10,8 +10,9 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_session, require_role
+from app.api.deps import get_current_product, get_current_user, get_data_session, require_role
 from app.core.code_generator import CodeGenerator
+from app.models.product import Product
 from app.models.user import User
 
 router = APIRouter()
@@ -33,8 +34,9 @@ def _sse_event(data: dict) -> str:
 @router.post("/codegen/generate")
 def generate_code(
     req: CodeGenRequest,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Gera codigo com contexto real via SSE streaming."""
     gen_id = str(uuid.uuid4())
@@ -69,13 +71,14 @@ def generate_code(
             try:
                 db.execute(text("""
                     INSERT INTO code_generations
-                        (id, org_id, repo_name, user_id, request_description, request_type,
+                        (id, org_id, product_id, repo_name, user_id, request_description, request_type,
                          file_path, use_context, context_used, generated_code, explanation)
-                    VALUES (:id, :org_id, :repo_name, :user_id, :desc, :type,
+                    VALUES (:id, :org_id, :product_id, :repo_name, :user_id, :desc, :type,
                             :file_path, :use_context, :context, :code, :explanation)
                 """), {
                     "id": gen_id,
                     "org_id": user.org_id,
+                    "product_id": product.id,
                     "repo_name": req.repo_name,
                     "user_id": user.id,
                     "desc": req.description,
@@ -102,8 +105,9 @@ def generate_code(
 @router.get("/codegen/history")
 def codegen_history(
     page: int = Query(1, ge=1),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Lista historico de geracoes do usuario."""
     offset = (page - 1) * 20
@@ -111,15 +115,15 @@ def codegen_history(
     rows = db.execute(text("""
         SELECT id, repo_name, request_description, request_type, created_at
         FROM code_generations
-        WHERE user_id = :user_id AND org_id = :org_id
+        WHERE user_id = :user_id AND product_id = :product_id
         ORDER BY created_at DESC
         LIMIT 20 OFFSET :offset
-    """), {"user_id": user.id, "org_id": user.org_id, "offset": offset}).mappings().all()
+    """), {"user_id": user.id, "product_id": product.id, "offset": offset}).mappings().all()
 
     total_row = db.execute(text("""
         SELECT COUNT(*) as total FROM code_generations
-        WHERE user_id = :user_id AND org_id = :org_id
-    """), {"user_id": user.id, "org_id": user.org_id}).mappings().first()
+        WHERE user_id = :user_id AND product_id = :product_id
+    """), {"user_id": user.id, "product_id": product.id}).mappings().first()
 
     return {
         "generations": [
@@ -140,8 +144,9 @@ def codegen_history(
 @router.get("/codegen/{gen_id}")
 def get_generation(
     gen_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev")),
+    product: Product = Depends(get_current_product),
 ):
     """Retorna detalhes de uma geracao."""
     row = db.execute(text("""
@@ -149,8 +154,8 @@ def get_generation(
                use_context, context_used, generated_code, explanation,
                model_used, tokens_used, cost_usd, created_at
         FROM code_generations
-        WHERE id = :id AND org_id = :org_id
-    """), {"id": gen_id, "org_id": user.org_id}).mappings().first()
+        WHERE id = :id AND product_id = :product_id
+    """), {"id": gen_id, "product_id": product.id}).mappings().first()
 
     if not row:
         raise HTTPException(status_code=404, detail="Geracao nao encontrada")

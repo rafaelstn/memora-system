@@ -46,11 +46,17 @@ def _find_python_files(repo_path: str) -> list[Path]:
     )
 
 
-def _clear_repo_chunks(db: Session, repo_name: str, org_id: str) -> int:
-    result = db.execute(
-        text("DELETE FROM code_chunks WHERE repo_name = :repo_name AND org_id = :org_id"),
-        {"repo_name": repo_name, "org_id": org_id},
-    )
+def _clear_repo_chunks(db: Session, repo_name: str, org_id: str, product_id: str | None = None) -> int:
+    if product_id:
+        result = db.execute(
+            text("DELETE FROM code_chunks WHERE repo_name = :repo_name AND product_id = :product_id"),
+            {"repo_name": repo_name, "product_id": product_id},
+        )
+    else:
+        result = db.execute(
+            text("DELETE FROM code_chunks WHERE repo_name = :repo_name AND org_id = :org_id"),
+            {"repo_name": repo_name, "org_id": org_id},
+        )
     db.commit()
     return result.rowcount
 
@@ -60,6 +66,7 @@ def ingest_repository(
     repo_path: str,
     repo_name: str | None = None,
     org_id: str | None = None,
+    product_id: str | None = None,
     on_progress=None,
 ) -> dict:
     """
@@ -77,7 +84,7 @@ def ingest_repository(
     logger.info(f"Iniciando ingestão: {repo_name} ({repo_path}) org_id={org_id}")
     _progress("scanning", 5, "Limpando chunks anteriores...")
 
-    deleted = _clear_repo_chunks(db, repo_name, org_id=org_id)
+    deleted = _clear_repo_chunks(db, repo_name, org_id=org_id, product_id=product_id)
     if deleted:
         logger.info(f"Removidos {deleted} chunks anteriores de {repo_name}")
 
@@ -143,6 +150,8 @@ def ingest_repository(
         )
         if org_id:
             record.org_id = org_id
+        if product_id:
+            record.product_id = product_id
         records.append(record)
 
     db.add_all(records)
@@ -174,6 +183,7 @@ def reindex_files(
     repo_path: str,
     file_paths: list[str],
     org_id: str = "",
+    product_id: str | None = None,
 ) -> dict:
     root = Path(repo_path)
     deleted_total = 0
@@ -223,6 +233,8 @@ def reindex_files(
         )
         if org_id:
             record.org_id = org_id
+        if product_id:
+            record.product_id = product_id
         records.append(record)
 
     db.add_all(records)

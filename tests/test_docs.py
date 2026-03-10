@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_current_user, get_session
+from app.api.deps import get_current_product, get_current_user, get_data_session, get_session
 from app.main import app
-from tests.conftest import _fake_user
+from tests.conftest import _fake_product, _fake_user
 
 
 # --- Fixtures ---
@@ -27,6 +27,8 @@ def admin_client():
     fake = _fake_user("admin")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -36,6 +38,8 @@ def dev_client():
     fake = _fake_user("dev")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -45,6 +49,8 @@ def suporte_client():
     fake = _fake_user("suporte")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -110,6 +116,7 @@ def test_docs_status_with_readme(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/docs/status/test-repo")
     assert resp.status_code == 200
     data = resp.json()
@@ -145,6 +152,7 @@ def test_get_readme_success(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/docs/test-repo/readme")
     assert resp.status_code == 200
     data = resp.json()
@@ -217,6 +225,7 @@ def test_get_onboarding_success(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/docs/test-repo/onboarding")
     assert resp.status_code == 200
     data = resp.json()
@@ -306,6 +315,7 @@ def test_push_to_github_success(mock_httpx, admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
 
     # Mock httpx responses
     mock_get_resp = MagicMock()
@@ -372,6 +382,7 @@ def test_complete_step_creates_progress(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.post("/api/onboarding/test-repo/progress", json={"step_id": "step-1"})
     assert resp.status_code == 200
     data = resp.json()
@@ -423,6 +434,7 @@ def test_complete_step_updates_existing(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.post("/api/onboarding/test-repo/progress", json={"step_id": "step-2"})
     assert resp.status_code == 200
     data = resp.json()

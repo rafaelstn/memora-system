@@ -2,13 +2,20 @@ import re
 import uuid
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_session
 from app.config import settings
+from app.core.rate_limit import AUTH_LIMIT, REGISTER_LIMIT, limiter
+from app.core.refresh_tokens import (
+    create_refresh_token,
+    revoke_all_user_tokens,
+    revoke_token as revoke_refresh_token,
+    validate_and_rotate,
+)
 from app.models.organization import Organization
 from app.models.user import User
 
@@ -35,8 +42,14 @@ class UserResponse(BaseModel):
     github_connected: bool
     org_id: str
     org_name: str | None = None
+    org_mode: str = "saas"
+    enterprise_setup_complete: bool = True
     onboarding_completed: bool = True
     onboarding_step: int = 0
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
 class AdminExistsResponse(BaseModel):
@@ -87,14 +100,25 @@ def _slugify(name: str) -> str:
 
 def _user_response(user: User, db: Session | None = None) -> dict:
     org_name = None
+    org_mode = "saas"
+    enterprise_setup_complete = True
     onboarding_completed = True
     onboarding_step = 0
     if db:
         org = db.query(Organization).filter(Organization.id == user.org_id).first()
         if org:
             org_name = org.name
+            org_mode = getattr(org, "mode", "saas") or "saas"
             onboarding_completed = org.onboarding_completed
             onboarding_step = org.onboarding_step
+        # Verificar setup Enterprise se aplicavel
+        if org_mode == "enterprise":
+            from sqlalchemy import text
+            row = db.execute(
+                text("SELECT setup_complete FROM enterprise_db_configs WHERE org_id = :org_id"),
+                {"org_id": user.org_id},
+            ).first()
+            enterprise_setup_complete = bool(row and row[0])
     return {
         "id": user.id,
         "name": user.name,
@@ -105,6 +129,8 @@ def _user_response(user: User, db: Session | None = None) -> dict:
         "github_connected": user.github_connected,
         "org_id": user.org_id,
         "org_name": org_name,
+        "org_mode": org_mode,
+        "enterprise_setup_complete": enterprise_setup_complete,
         "onboarding_completed": onboarding_completed,
         "onboarding_step": onboarding_step,
     }
@@ -113,7 +139,8 @@ def _user_response(user: User, db: Session | None = None) -> dict:
 # --- Routes ---
 
 @router.post("/auth/register", response_model=UserResponse)
-def register(body: RegisterRequest, db: Session = Depends(get_session)):
+@limiter.limit(REGISTER_LIMIT)
+def register(request: Request, body: RegisterRequest, db: Session = Depends(get_session)):
     """Cadastro unificado: primeiro usuario cria org e vira admin, demais precisam de convite."""
     total_users = db.query(User).count()
 
@@ -151,6 +178,24 @@ def register(body: RegisterRequest, db: Session = Depends(get_session)):
             github_connected=False,
         )
         db.add(user)
+
+        # Auto-create trial plan for new org
+        from datetime import datetime, timedelta
+        plan_id = str(uuid.uuid4())
+        now = datetime.utcnow()
+        db.execute(
+            text("""
+                INSERT INTO org_plans (id, org_id, plan, trial_started_at, trial_ends_at, is_active)
+                VALUES (:id, :org_id, 'pro_trial', :started, :ends, true)
+            """),
+            {
+                "id": plan_id,
+                "org_id": org.id,
+                "started": now,
+                "ends": now + timedelta(days=7),
+            },
+        )
+
         db.commit()
         return _user_response(user, db)
 
@@ -193,6 +238,20 @@ def register(body: RegisterRequest, db: Session = Depends(get_session)):
         text("UPDATE invites SET status = 'used', used_by = :uid WHERE id = :iid"),
         {"uid": supabase_uid, "iid": invite["id"]},
     )
+
+    # Auto-create product membership if invite has product_id
+    invite_product_id = invite.get("product_id")
+    if invite_product_id:
+        membership_id = str(uuid.uuid4())
+        db.execute(
+            text("""
+                INSERT INTO product_memberships (id, product_id, user_id)
+                VALUES (:id, :product_id, :user_id)
+                ON CONFLICT (product_id, user_id) DO NOTHING
+            """),
+            {"id": membership_id, "product_id": invite_product_id, "user_id": supabase_uid},
+        )
+
     db.commit()
 
     return _user_response(user, db)
@@ -200,11 +259,37 @@ def register(body: RegisterRequest, db: Session = Depends(get_session)):
 
 # Alias para compatibilidade
 @router.post("/auth/setup", response_model=UserResponse)
-def setup_alias(body: RegisterRequest, db: Session = Depends(get_session)):
+@limiter.limit(REGISTER_LIMIT)
+def setup_alias(request: Request, body: RegisterRequest, db: Session = Depends(get_session)):
     """Alias de /auth/register para compatibilidade."""
-    return register(body, db)
+    return register(request, body, db)
 
 
 @router.get("/auth/me", response_model=UserResponse)
 def me(user: User = Depends(get_current_user), db: Session = Depends(get_session)):
     return _user_response(user, db)
+
+
+@router.post("/auth/refresh")
+@limiter.limit(AUTH_LIMIT)
+def refresh_token(request: Request, body: RefreshRequest, db: Session = Depends(get_session)):
+    """Troca refresh token por novo access token + novo refresh token (rotacao)."""
+    ip_address = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+
+    try:
+        new_token, user_id = validate_and_rotate(db, body.refresh_token, ip_address, user_agent)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sessão inválida. Faça login novamente.",
+        )
+
+    return {"refresh_token": new_token, "message": "Token renovado com sucesso"}
+
+
+@router.post("/auth/logout")
+def logout(body: RefreshRequest, db: Session = Depends(get_session)):
+    """Revoga o refresh token atual (logout)."""
+    revoke_refresh_token(db, body.refresh_token)
+    return {"message": "Logout realizado com sucesso"}

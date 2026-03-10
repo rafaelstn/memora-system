@@ -20,10 +20,10 @@ _ALLOWED_UPDATE_COLUMNS: dict[str, set[str]] = {
 # Allowed columns for dynamic WHERE clauses, per table.
 _ALLOWED_WHERE_COLUMNS: dict[str, set[str]] = {
     "impact_findings": {
-        "analysis_id", "org_id", "severity", "finding_type",
+        "analysis_id", "org_id", "product_id", "severity", "finding_type",
     },
     "business_rules": {
-        "org_id", "repo_name", "rule_type", "is_active",
+        "org_id", "product_id", "repo_name", "rule_type", "is_active",
     },
 }
 

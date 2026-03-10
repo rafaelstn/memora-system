@@ -31,12 +31,27 @@ PROBE_NAMES = [
 ]
 
 
-def _is_private_ip(hostname: str) -> bool:
-    """Check if hostname resolves to a private IP."""
+_BLOCKED_HOSTNAMES = {"localhost", "localhost.localdomain", "ip6-localhost", "ip6-loopback"}
+
+
+def _is_blocked_host(hostname: str) -> bool:
+    """Check if hostname is blocked (private IPs, loopback, link-local)."""
+    if hostname.lower() in _BLOCKED_HOSTNAMES:
+        return True
     try:
         ip = ipaddress.ip_address(hostname)
-        return ip.is_private or ip.is_loopback
+        return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
     except ValueError:
+        # Not an IP — could be a domain, check after DNS resolution
+        try:
+            import socket
+            resolved = socket.getaddrinfo(hostname, None)
+            for _, _, _, _, sockaddr in resolved:
+                ip = ipaddress.ip_address(sockaddr[0])
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                    return True
+        except (socket.gaierror, ValueError):
+            pass
         return False
 
 
@@ -45,12 +60,18 @@ def validate_target_url(target_url: str) -> str | None:
     parsed = urlparse(target_url)
     hostname = parsed.hostname or ""
 
-    # Check private IPs
-    if _is_private_ip(hostname):
-        return "URL invalida — execute apenas em ambiente de desenvolvimento ou staging. IPs privados nao sao permitidos."
+    if not parsed.scheme in ("http", "https"):
+        return "URL invalida — use http:// ou https://."
+
+    # Block private/loopback/link-local IPs and hostnames
+    if _is_blocked_host(hostname):
+        return (
+            "Host nao autorizado. IPs privados, loopback e link-local sao bloqueados "
+            "por seguranca (SSRF prevention)."
+        )
 
     # Check if it's the Memora app itself
-    app_url = getattr(settings, "APP_URL", "http://localhost:3000")
+    app_url = getattr(settings, "app_url", "http://localhost:3000")
     api_url = getattr(settings, "NEXT_PUBLIC_API_URL", "http://localhost:8000")
     for known_url in [app_url, api_url]:
         if known_url:
@@ -59,10 +80,52 @@ def validate_target_url(target_url: str) -> str | None:
                     known_parsed.port == parsed.port):
                 return "URL invalida — esta URL aponta para o proprio Memora. Use um ambiente de teste separado."
 
-    if not parsed.scheme in ("http", "https"):
-        return "URL invalida — use http:// ou https://."
-
     return None
+
+
+def validate_target_scope(target_url: str, db: Session, org_id: str) -> str | None:
+    """Verifica se o host-alvo pertence a um sistema cadastrado da org.
+
+    Returns error message or None.
+    """
+    parsed = urlparse(target_url)
+    hostname = parsed.hostname or ""
+
+    # Verificar contra repos cadastrados (code_chunks.repo_name pode conter URLs de repos)
+    # e contra projetos monitorados (monitored_projects)
+    has_repo = db.execute(text("""
+        SELECT 1 FROM code_chunks
+        WHERE org_id = :org_id AND (repo_name ILIKE :pattern)
+        LIMIT 1
+    """), {"org_id": org_id, "pattern": f"%{hostname}%"}).first()
+
+    if has_repo:
+        return None
+
+    # Verificar em projetos monitorados (podem ter URL como parte do nome/descricao)
+    has_project = db.execute(text("""
+        SELECT 1 FROM monitored_projects
+        WHERE org_id = :org_id AND (name ILIKE :pattern OR description ILIKE :pattern)
+        LIMIT 1
+    """), {"org_id": org_id, "pattern": f"%{hostname}%"}).first()
+
+    if has_project:
+        return None
+
+    # Verificar em scans anteriores do DAST da mesma org (host ja aprovado antes)
+    has_prev_scan = db.execute(text("""
+        SELECT 1 FROM dast_scans
+        WHERE org_id = :org_id AND target_url ILIKE :pattern AND status = 'completed'
+        LIMIT 1
+    """), {"org_id": org_id, "pattern": f"%{hostname}%"}).first()
+
+    if has_prev_scan:
+        return None
+
+    return (
+        "Host nao autorizado. Apenas sistemas cadastrados na sua organizacao "
+        "podem ser analisados. Indexe o repositorio ou cadastre o projeto no monitor primeiro."
+    )
 
 
 class DASTScanner:

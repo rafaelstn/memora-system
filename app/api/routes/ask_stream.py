@@ -2,17 +2,19 @@ import json
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_session
+from app.api.deps import get_current_product, get_current_user, get_data_session
 from app.config import settings
 from app.core.assistant import SYSTEM_PROMPT, Assistant
 from app.integrations import llm_router
+from app.core.rate_limit import ASK_LIMIT, limiter
 from app.integrations.llm_client import stream_llm
+from app.models.product import Product
 from app.models.user import User
 
 router = APIRouter()
@@ -31,12 +33,12 @@ def _sse_event(data: dict) -> str:
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-def _get_or_create_conversation(db: Session, user: User, repo_name: str, title: str, conversation_id: str | None = None) -> str:
+def _get_or_create_conversation(db: Session, user: User, repo_name: str, title: str, conversation_id: str | None = None, product_id: str | None = None) -> str:
     """Use given conversation_id, or get existing for this user+repo, or create a new one."""
     if conversation_id:
         row = db.execute(
-            text("SELECT id FROM conversations WHERE id = :id AND org_id = :org_id"),
-            {"id": conversation_id, "org_id": user.org_id},
+            text("SELECT id FROM conversations WHERE id = :id AND product_id = :product_id"),
+            {"id": conversation_id, "product_id": product_id},
         ).first()
         if row:
             db.execute(
@@ -49,10 +51,10 @@ def _get_or_create_conversation(db: Session, user: User, repo_name: str, title: 
     row = db.execute(
         text("""
             SELECT id FROM conversations
-            WHERE user_id = :user_id AND repo_name = :repo_name AND org_id = :org_id
+            WHERE user_id = :user_id AND repo_name = :repo_name AND product_id = :product_id
             ORDER BY updated_at DESC LIMIT 1
         """),
-        {"user_id": user.id, "repo_name": repo_name, "org_id": user.org_id},
+        {"user_id": user.id, "repo_name": repo_name, "product_id": product_id},
     ).mappings().first()
 
     if row:
@@ -66,12 +68,12 @@ def _get_or_create_conversation(db: Session, user: User, repo_name: str, title: 
     conv_id = str(uuid.uuid4())
     db.execute(
         text("""
-            INSERT INTO conversations (id, org_id, repo_name, user_id, title)
-            VALUES (:id, :org_id, :repo_name, :user_id, :title)
+            INSERT INTO conversations (id, product_id, repo_name, user_id, title)
+            VALUES (:id, :product_id, :repo_name, :user_id, :title)
         """),
         {
             "id": conv_id,
-            "org_id": user.org_id,
+            "product_id": product_id,
             "repo_name": repo_name,
             "user_id": user.id,
             "title": title,
@@ -111,7 +113,7 @@ def _save_message(
     db.commit()
 
 
-def _search_knowledge(db: Session, question: str, org_id: str, top_k: int = 3) -> list[dict]:
+def _search_knowledge(db: Session, question: str, product_id: str | None, top_k: int = 3) -> list[dict]:
     """Search knowledge_entries for relevant technical memory."""
     try:
         from app.core.embedder import Embedder
@@ -123,11 +125,11 @@ def _search_knowledge(db: Session, question: str, org_id: str, top_k: int = 3) -
                 SELECT id, title, summary, source_type, source_url,
                        1 - (embedding <=> CAST(:embedding AS vector)) AS score
                 FROM knowledge_entries
-                WHERE org_id = :org_id AND embedding IS NOT NULL
+                WHERE product_id = :product_id AND embedding IS NOT NULL
                 ORDER BY embedding <=> CAST(:embedding AS vector)
                 LIMIT :top_k
             """),
-            {"org_id": org_id, "embedding": str(query_embedding), "top_k": top_k},
+            {"product_id": product_id, "embedding": str(query_embedding), "top_k": top_k},
         ).mappings().all()
 
         # Filter by minimum relevance threshold
@@ -160,15 +162,15 @@ def _has_llm_providers(db: Session, org_id: str) -> bool:
         return False
 
 
-def _generate_stream(question: str, repo_name: str, max_chunks: int, provider_id: str | None, db: Session, user: User, conversation_id: str | None = None):
+def _generate_stream(question: str, repo_name: str, max_chunks: int, provider_id: str | None, db: Session, user: User, conversation_id: str | None = None, product_id: str | None = None):
     assistant = Assistant(db)
-    chunks = assistant._search.search(question, repo_name, top_k=max_chunks, org_id=user.org_id)
+    chunks = assistant._search.search(question, repo_name, top_k=max_chunks, org_id=user.org_id, product_id=product_id)
 
     # Search knowledge entries in parallel
-    knowledge_results = _search_knowledge(db, question, user.org_id, top_k=3)
+    knowledge_results = _search_knowledge(db, question, product_id, top_k=3)
 
     # Get or create conversation + save user message
-    conv_id = _get_or_create_conversation(db, user, repo_name, question[:100], conversation_id)
+    conv_id = _get_or_create_conversation(db, user, repo_name, question[:100], conversation_id, product_id=product_id)
     _save_message(db, conv_id, "user", question)
 
     # Emit conversation_id so frontend can track it
@@ -323,13 +325,16 @@ def _generate_stream(question: str, repo_name: str, max_chunks: int, provider_id
 
 
 @router.post("/ask/stream")
+@limiter.limit(ASK_LIMIT)
 def ask_stream(
-    request: StreamAskRequest,
-    db: Session = Depends(get_session),
+    request: Request,
+    body: StreamAskRequest,
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     return StreamingResponse(
-        _generate_stream(request.question, request.repo_name, request.max_chunks, request.provider_id, db, user, request.conversation_id),
+        _generate_stream(body.question, body.repo_name, body.max_chunks, body.provider_id, db, user, body.conversation_id, product_id=product.id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

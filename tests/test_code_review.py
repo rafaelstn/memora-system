@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.api.deps import get_session
+from app.api.deps import get_data_session, get_session
 
 
 # --- Helpers ---
@@ -127,6 +127,7 @@ def test_review_stats(admin_client):
 
     db.execute = mock_execute
     app.dependency_overrides[get_session] = lambda: db
+    app.dependency_overrides[get_data_session] = lambda: db
     try:
         resp = admin_client.get("/api/reviews/stats")
         assert resp.status_code == 200
@@ -138,6 +139,7 @@ def test_review_stats(admin_client):
     finally:
         from tests.conftest import _mock_session
         app.dependency_overrides[get_session] = _mock_session
+        app.dependency_overrides[get_data_session] = _mock_session
 
 
 # --- GET /api/reviews/{id} ---
@@ -148,12 +150,14 @@ def test_get_review_not_found(admin_client):
     db = _mock_review_db()
     db.execute.return_value.mappings.return_value.first.return_value = None
     app.dependency_overrides[get_session] = lambda: db
+    app.dependency_overrides[get_data_session] = lambda: db
     try:
         resp = admin_client.get("/api/reviews/nonexistent-id")
         assert resp.status_code == 404
     finally:
         from tests.conftest import _mock_session
         app.dependency_overrides[get_session] = _mock_session
+        app.dependency_overrides[get_data_session] = _mock_session
 
 
 # --- DELETE /api/reviews/{id} ---
@@ -171,12 +175,14 @@ def test_delete_review_not_found(admin_client):
     db = _mock_review_db()
     db.execute.return_value.rowcount = 0
     app.dependency_overrides[get_session] = lambda: db
+    app.dependency_overrides[get_data_session] = lambda: db
     try:
         resp = admin_client.delete("/api/reviews/nonexistent-id")
         assert resp.status_code == 404
     finally:
         from tests.conftest import _mock_session
         app.dependency_overrides[get_session] = _mock_session
+        app.dependency_overrides[get_data_session] = _mock_session
 
 
 # --- Unit tests: code_reviewer ---

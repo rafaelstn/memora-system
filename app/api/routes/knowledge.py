@@ -10,13 +10,14 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_session, require_role
+from app.api.deps import get_current_product, get_data_session, require_role
 from app.config import settings
 from app.core.document_processor import ALLOWED_EXTENSIONS, MAX_FILE_SIZE, DocumentProcessor, get_upload_path
 from app.core.embedder import Embedder
 from app.core.knowledge_extractor import KnowledgeExtractor
 from app.core.wiki_generator import WikiGenerator
 from app.db.session import SessionLocal
+from app.models.product import Product
 from app.models.user import User
 
 router = APIRouter(dependencies=[Depends(require_role("admin", "dev"))])
@@ -38,17 +39,17 @@ def search_knowledge(
     repo_id: str | None = Query(None),
     source_type: str | None = Query(None),
     decision_type: str | None = Query(None),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin", "dev", "suporte")),
+    product: Product = Depends(get_current_product),
 ):
     """Hybrid search across knowledge entries (semantic + full-text with RRF)."""
-    org_id = user.org_id
     embedder = Embedder()
     query_embedding = embedder.embed_text(q)
 
     # Semantic search
-    sem_where = "WHERE org_id = :org_id"
-    sem_params: dict = {"org_id": org_id, "embedding": str(query_embedding), "top_k": 20}
+    sem_where = "WHERE product_id = :product_id"
+    sem_params: dict = {"product_id": product.id, "embedding": str(query_embedding), "top_k": 20}
     if repo_id:
         sem_where += " AND repo_id = :repo_id"
         sem_params["repo_id"] = repo_id
@@ -69,8 +70,8 @@ def search_knowledge(
     """), sem_params).mappings().all()
 
     # Keyword search
-    kw_where = "WHERE org_id = :org_id"
-    kw_params: dict = {"org_id": org_id, "query": q, "top_k": 20}
+    kw_where = "WHERE product_id = :product_id"
+    kw_params: dict = {"product_id": product.id, "query": q, "top_k": 20}
     if repo_id:
         kw_where += " AND repo_id = :repo_id"
         kw_params["repo_id"] = repo_id
@@ -141,13 +142,14 @@ def list_entries(
     source_type: str | None = Query(None),
     decision_type: str | None = Query(None),
     page: int = Query(1, ge=1),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     per_page = 50
     offset = (page - 1) * per_page
-    query = "SELECT id, title, summary, source_type, source_url, source_date, decision_type, file_paths, components, created_at FROM knowledge_entries WHERE org_id = :org_id"
-    params: dict = {"org_id": user.org_id, "limit": per_page, "offset": offset}
+    query = "SELECT id, title, summary, source_type, source_url, source_date, decision_type, file_paths, components, created_at FROM knowledge_entries WHERE product_id = :product_id"
+    params: dict = {"product_id": product.id, "limit": per_page, "offset": offset}
 
     if repo_id:
         query += " AND repo_id = :repo_id"
@@ -180,10 +182,10 @@ def list_entries(
 
 
 @router.get("/knowledge/entries/{entry_id}")
-def get_entry(entry_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def get_entry(entry_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     row = db.execute(
-        text("SELECT * FROM knowledge_entries WHERE id = :id AND org_id = :org_id"),
-        {"id": entry_id, "org_id": user.org_id},
+        text("SELECT * FROM knowledge_entries WHERE id = :id AND product_id = :product_id"),
+        {"id": entry_id, "product_id": product.id},
     ).mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Entrada nao encontrada")
@@ -205,8 +207,9 @@ def get_timeline(
     source_type: str | None = Query(None),
     period: str = Query("90d"),
     page: int = Query(1, ge=1),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     per_page = 50
     offset = (page - 1) * per_page
@@ -214,9 +217,9 @@ def get_timeline(
         SELECT id, title, summary, source_type, source_url, source_date,
                decision_type, file_paths, components, created_at
         FROM knowledge_entries
-        WHERE org_id = :org_id
+        WHERE product_id = :product_id
     """
-    params: dict = {"org_id": user.org_id, "limit": per_page, "offset": offset}
+    params: dict = {"product_id": product.id, "limit": per_page, "offset": offset}
 
     if repo_id:
         query += " AND repo_id = :repo_id"
@@ -274,8 +277,9 @@ class ADRUpdate(BaseModel):
 def create_adr(
     body: ADRCreate,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     entry_id = str(uuid.uuid4())
 
@@ -286,14 +290,14 @@ def create_adr(
 
     db.execute(text("""
         INSERT INTO knowledge_entries
-            (id, org_id, repo_id, source_type, title, content, summary,
+            (id, product_id, repo_id, source_type, title, content, summary,
              embedding, file_paths, decision_type, created_by)
         VALUES
-            (:id, :org_id, :repo_id, 'adr', :title, :content, :summary,
+            (:id, :product_id, :repo_id, 'adr', :title, :content, :summary,
              CAST(:embedding AS vector), :file_paths, :decision_type, :created_by)
     """), {
         "id": entry_id,
-        "org_id": user.org_id,
+        "product_id": product.id,
         "repo_id": body.repo_id,
         "title": body.title,
         "content": body.content,
@@ -347,12 +351,13 @@ def _generate_adr_summary(entry_id: str, org_id: str):
 def update_adr(
     entry_id: str,
     body: ADRUpdate,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     existing = db.execute(
-        text("SELECT id FROM knowledge_entries WHERE id = :id AND org_id = :org_id AND source_type = 'adr'"),
-        {"id": entry_id, "org_id": user.org_id},
+        text("SELECT id FROM knowledge_entries WHERE id = :id AND product_id = :product_id AND source_type = 'adr'"),
+        {"id": entry_id, "product_id": product.id},
     ).first()
     if not existing:
         raise HTTPException(status_code=404, detail="ADR nao encontrado")
@@ -396,10 +401,10 @@ def update_adr(
 
 
 @router.delete("/knowledge/adrs/{entry_id}")
-def delete_adr(entry_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def delete_adr(entry_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     result = db.execute(
-        text("DELETE FROM knowledge_entries WHERE id = :id AND org_id = :org_id AND source_type = 'adr'"),
-        {"id": entry_id, "org_id": user.org_id},
+        text("DELETE FROM knowledge_entries WHERE id = :id AND product_id = :product_id AND source_type = 'adr'"),
+        {"id": entry_id, "product_id": product.id},
     )
     db.commit()
     if result.rowcount == 0:
@@ -414,8 +419,9 @@ async def upload_document(
     file: UploadFile = File(...),
     repo_id: str | None = Query(None),
     background_tasks: BackgroundTasks = BackgroundTasks(),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="Arquivo sem nome")
@@ -436,11 +442,11 @@ async def upload_document(
     doc_id = str(uuid.uuid4())
     db.execute(text("""
         INSERT INTO knowledge_documents
-            (id, org_id, repo_id, filename, file_type, file_size, storage_path, uploaded_by)
-        VALUES (:id, :org_id, :repo_id, :filename, :file_type, :file_size, :storage_path, :uploaded_by)
+            (id, product_id, repo_id, filename, file_type, file_size, storage_path, uploaded_by)
+        VALUES (:id, :product_id, :repo_id, :filename, :file_type, :file_size, :storage_path, :uploaded_by)
     """), {
         "id": doc_id,
-        "org_id": user.org_id,
+        "product_id": product.id,
         "repo_id": repo_id,
         "filename": file.filename,
         "file_type": ext,
@@ -470,8 +476,9 @@ def _process_document_bg(document_id: str, org_id: str):
 @router.get("/knowledge/documents")
 def list_documents(
     page: int = Query(1, ge=1),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     per_page = 50
     offset = (page - 1) * per_page
@@ -479,10 +486,10 @@ def list_documents(
         SELECT kd.*, u.name as uploaded_by_name
         FROM knowledge_documents kd
         LEFT JOIN users u ON u.id = kd.uploaded_by
-        WHERE kd.org_id = :org_id
+        WHERE kd.product_id = :product_id
         ORDER BY kd.created_at DESC
         LIMIT :limit OFFSET :offset
-    """), {"org_id": user.org_id, "limit": per_page, "offset": offset}).mappings().all()
+    """), {"product_id": product.id, "limit": per_page, "offset": offset}).mappings().all()
 
     return [
         {
@@ -500,10 +507,10 @@ def list_documents(
 
 
 @router.get("/knowledge/documents/{doc_id}/status")
-def document_status(doc_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def document_status(doc_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     row = db.execute(
-        text("SELECT processed, entry_id FROM knowledge_documents WHERE id = :id AND org_id = :org_id"),
-        {"id": doc_id, "org_id": user.org_id},
+        text("SELECT processed, entry_id FROM knowledge_documents WHERE id = :id AND product_id = :product_id"),
+        {"id": doc_id, "product_id": product.id},
     ).mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Documento nao encontrado")
@@ -515,10 +522,10 @@ def document_status(doc_id: str, db: Session = Depends(get_session), user: User 
 
 
 @router.delete("/knowledge/documents/{doc_id}")
-def delete_document(doc_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def delete_document(doc_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     doc = db.execute(
-        text("SELECT storage_path, entry_id FROM knowledge_documents WHERE id = :id AND org_id = :org_id"),
-        {"id": doc_id, "org_id": user.org_id},
+        text("SELECT storage_path, entry_id FROM knowledge_documents WHERE id = :id AND product_id = :product_id"),
+        {"id": doc_id, "product_id": product.id},
     ).mappings().first()
     if not doc:
         raise HTTPException(status_code=404, detail="Documento nao encontrado")
@@ -586,16 +593,16 @@ class WikiBatchRequest(BaseModel):
 
 @router.get("/knowledge/wiki/suggestions")
 def get_wiki_suggestions(
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     """Return suggested components for wiki generation (those without wikis yet)."""
-    org_id = user.org_id
 
     # Get existing wiki paths
     existing = db.execute(
-        text("SELECT component_path FROM knowledge_wikis WHERE org_id = :org_id"),
-        {"org_id": org_id},
+        text("SELECT component_path FROM knowledge_wikis WHERE product_id = :product_id"),
+        {"product_id": product.id},
     ).all()
     existing_paths = {row[0] for row in existing}
 
@@ -606,11 +613,11 @@ def get_wiki_suggestions(
     code_files = db.execute(text("""
         SELECT file_path, COUNT(*) as chunk_count, repo_name
         FROM code_chunks
-        WHERE org_id = :org_id
+        WHERE product_id = :product_id
         GROUP BY file_path, repo_name
         ORDER BY COUNT(*) DESC
         LIMIT 50
-    """), {"org_id": org_id}).all()
+    """), {"product_id": product.id}).all()
 
     for row in code_files:
         path = row[0]
@@ -635,9 +642,9 @@ def get_wiki_suggestions(
     knowledge_files = db.execute(text("""
         SELECT DISTINCT jsonb_array_elements_text(file_paths) AS fp
         FROM knowledge_entries
-        WHERE org_id = :org_id AND file_paths IS NOT NULL
+        WHERE product_id = :product_id AND file_paths IS NOT NULL
         LIMIT 100
-    """), {"org_id": org_id}).all()
+    """), {"product_id": product.id}).all()
 
     for row in knowledge_files:
         path = row[0]
@@ -664,8 +671,9 @@ def get_wiki_suggestions(
 def generate_wiki(
     body: WikiGenerateRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     background_tasks.add_task(
         _generate_wiki_bg, user.org_id, body.repo_id, body.component_path, body.component_name
@@ -677,8 +685,9 @@ def generate_wiki(
 def generate_wiki_batch(
     body: WikiBatchRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     """Generate wikis for multiple components at once."""
     if not body.components:
@@ -725,11 +734,12 @@ def _generate_wiki_batch_bg(org_id: str, components: list[dict]):
 @router.get("/knowledge/wikis")
 def list_wikis(
     repo_id: str | None = Query(None),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
-    query = "SELECT * FROM knowledge_wikis WHERE org_id = :org_id"
-    params: dict = {"org_id": user.org_id}
+    query = "SELECT * FROM knowledge_wikis WHERE product_id = :product_id"
+    params: dict = {"product_id": product.id}
     if repo_id:
         query += " AND repo_id = :repo_id"
         params["repo_id"] = repo_id
@@ -751,10 +761,10 @@ def list_wikis(
 
 
 @router.delete("/knowledge/wiki/{wiki_id}")
-def delete_wiki(wiki_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def delete_wiki(wiki_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     result = db.execute(
-        text("DELETE FROM knowledge_wikis WHERE id = :id AND org_id = :org_id"),
-        {"id": wiki_id, "org_id": user.org_id},
+        text("DELETE FROM knowledge_wikis WHERE id = :id AND product_id = :product_id"),
+        {"id": wiki_id, "product_id": product.id},
     )
     db.commit()
     if result.rowcount == 0:
@@ -763,10 +773,10 @@ def delete_wiki(wiki_id: str, db: Session = Depends(get_session), user: User = D
 
 
 @router.get("/knowledge/wiki/{wiki_id}")
-def get_wiki(wiki_id: str, db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def get_wiki(wiki_id: str, db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     row = db.execute(
-        text("SELECT * FROM knowledge_wikis WHERE id = :id AND org_id = :org_id"),
-        {"id": wiki_id, "org_id": user.org_id},
+        text("SELECT * FROM knowledge_wikis WHERE id = :id AND product_id = :product_id"),
+        {"id": wiki_id, "product_id": product.id},
     ).mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Wiki nao encontrada")
@@ -783,8 +793,9 @@ def get_wiki(wiki_id: str, db: Session = Depends(get_session), user: User = Depe
 def sync_repository(
     repo_name: str,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     """Trigger extraction of PRs, commits, and issues from a GitHub repo."""
     # Build full repo name (owner/repo) from GitHub integration
@@ -818,8 +829,7 @@ def _sync_repo_bg(org_id: str, repo_full_name: str):
 # ===== Stats =====
 
 @router.get("/knowledge/stats")
-def knowledge_stats(db: Session = Depends(get_session), user: User = Depends(_get_user)):
-    org_id = user.org_id
+def knowledge_stats(db: Session = Depends(get_data_session), user: User = Depends(_get_user), product: Product = Depends(get_current_product)):
     row = db.execute(text("""
         SELECT
             COUNT(*) as total,
@@ -828,12 +838,12 @@ def knowledge_stats(db: Session = Depends(get_session), user: User = Depends(_ge
             COUNT(*) FILTER (WHERE source_type = 'adr') as adrs,
             COUNT(*) FILTER (WHERE source_type = 'issue') as issues
         FROM knowledge_entries
-        WHERE org_id = :org_id
-    """), {"org_id": org_id}).mappings().first()
+        WHERE product_id = :product_id
+    """), {"product_id": product.id}).mappings().first()
 
     wikis_count = db.execute(
-        text("SELECT COUNT(*) FROM knowledge_wikis WHERE org_id = :org_id"),
-        {"org_id": org_id},
+        text("SELECT COUNT(*) FROM knowledge_wikis WHERE product_id = :product_id"),
+        {"product_id": product.id},
     ).scalar()
 
     return {
@@ -855,7 +865,7 @@ class KnowledgeSettingsPayload(BaseModel):
 
 
 @router.get("/knowledge/settings")
-def get_knowledge_settings(db: Session = Depends(get_session), user: User = Depends(_get_user)):
+def get_knowledge_settings(db: Session = Depends(get_data_session), user: User = Depends(_get_user)):
     row = db.execute(
         text("SELECT settings FROM organizations WHERE id = :org_id"),
         {"org_id": user.org_id},
@@ -872,7 +882,7 @@ def get_knowledge_settings(db: Session = Depends(get_session), user: User = Depe
 def update_knowledge_settings(
     payload: KnowledgeSettingsPayload,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
 ):
     # Read previous settings

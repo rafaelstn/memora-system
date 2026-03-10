@@ -5,10 +5,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_current_user, get_session
+from app.api.deps import get_current_product, get_current_user, get_data_session, get_session
 from app.core.pdf_generator import PDFGenerator
 from app.main import app
-from tests.conftest import _fake_user
+from tests.conftest import _fake_product, _fake_user
 
 
 def _mock_session_with_data(main_row, findings=None, deps=None):
@@ -197,6 +197,8 @@ class TestPostmortemPDFEndpoint:
 
         app.dependency_overrides[get_current_user] = lambda: _fake_user("admin")
         app.dependency_overrides[get_session] = lambda: session
+        app.dependency_overrides[get_data_session] = lambda: session
+        app.dependency_overrides[get_current_product] = _fake_product
         client = TestClient(app)
 
         res = client.get("/api/incidents/inc-001/postmortem/pdf")
@@ -214,6 +216,8 @@ class TestPostmortemPDFEndpoint:
 
         app.dependency_overrides[get_current_user] = lambda: _fake_user("admin")
         app.dependency_overrides[get_session] = lambda: session
+        app.dependency_overrides[get_data_session] = lambda: session
+        app.dependency_overrides[get_current_product] = _fake_product
         client = TestClient(app)
 
         res = client.get("/api/incidents/inc-999/postmortem/pdf")
@@ -228,6 +232,7 @@ class TestExecutivePDFEndpoint:
         session = MagicMock()
         session.query.return_value.filter.return_value.first.return_value = None
         app.dependency_overrides[get_session] = lambda: session
+        app.dependency_overrides[get_data_session] = lambda: session
         client = TestClient(app)
 
         res = client.get("/api/executive/snapshot/snap-001/pdf")
@@ -240,6 +245,7 @@ class TestExecutivePDFEndpoint:
         session = MagicMock()
         session.query.return_value.filter.return_value.first.return_value = None
         app.dependency_overrides[get_session] = lambda: session
+        app.dependency_overrides[get_data_session] = lambda: session
         client = TestClient(app)
 
         res = client.get("/api/executive/snapshot/snap-001/pdf")

@@ -282,6 +282,38 @@ def build_executive_snapshot_email(snapshot: dict, detail_url: str) -> tuple[str
     return subject, body
 
 
+# --- Enterprise DB Health ---
+
+def build_enterprise_db_down_email(org_name: str, error: str, dashboard_url: str) -> tuple[str, str]:
+    """Build email for Enterprise DB going down (ok -> error)."""
+    subject = f"🔴 Banco Enterprise indisponivel — {org_name}"
+    content = f"""
+    <h2 style="margin:0 0 12px;font-size:18px;">🔴 Banco de dados indisponivel</h2>
+    <p style="margin:8px 0;color:#52525b;"><strong>Organizacao:</strong> {org_name}</p>
+    <p style="margin:8px 0;color:#52525b;"><strong>Erro:</strong></p>
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin:8px 0;">
+        <code style="font-size:12px;color:#991b1b;word-break:break-all;">{error}</code>
+    </div>
+    <p style="color:#71717a;margin-top:12px;">O Memora nao esta conseguindo conectar ao banco de dados da sua organizacao. Verifique se o servidor esta acessivel e se as credenciais estao corretas.</p>
+    {BUTTON_HTML.format(url=dashboard_url, color="#dc2626", label="Verificar Configuracao")}
+    """
+    body = _render("#dc2626", "🔴", "Banco Enterprise Indisponivel", content)
+    return subject, body
+
+
+def build_enterprise_db_recovered_email(org_name: str, dashboard_url: str) -> tuple[str, str]:
+    """Build email for Enterprise DB recovering (error -> ok)."""
+    subject = f"✅ Banco Enterprise recuperado — {org_name}"
+    content = f"""
+    <h2 style="margin:0 0 12px;font-size:18px;">✅ Banco de dados recuperado</h2>
+    <p style="margin:8px 0;color:#52525b;"><strong>Organizacao:</strong> {org_name}</p>
+    <p style="color:#3f3f46;margin-top:12px;">O banco de dados Enterprise voltou a responder normalmente. Nenhuma acao adicional e necessaria.</p>
+    {BUTTON_HTML.format(url=dashboard_url, color="#16a34a", label="Ver Dashboard")}
+    """
+    body = _render("#16a34a", "✅", "Banco Enterprise Recuperado", content)
+    return subject, body
+
+
 # --- Test email ---
 
 def send_test_email(to: str) -> bool:

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { Message, Source } from "@/lib/types";
 import { askQuestionStream } from "@/lib/api";
@@ -25,7 +25,9 @@ import {
 
 export default function ChatPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const repoName = params.repo as string;
+  const contextPrefill = searchParams.get("context") || "";
   const { user } = useAuth();
 
   const chat = useChatContext();
@@ -432,6 +434,7 @@ export default function ChatPage() {
           onSend={handleSend}
           disabled={repoStatus === "not_indexed"}
           disabledMessage="Este repositorio ainda nao foi indexado. Execute a ingestao antes de fazer perguntas."
+          initialValue={contextPrefill}
         />
       </div>
 

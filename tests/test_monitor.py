@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_session
+from app.api.deps import get_data_session, get_session
 from app.api.routes.logs_ingest import _authenticate_project
 from app.main import app
 
@@ -41,6 +41,7 @@ def test_ingest_single_log_valid_token(admin_client):
     app.dependency_overrides[_authenticate_project] = lambda: _override_project_auth()
     mock_db = MagicMock()
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
 
     response = client.post(
         "/api/logs/ingest",
@@ -60,6 +61,7 @@ def test_ingest_invalid_token():
     mock_db = MagicMock()
     mock_db.execute.return_value.mappings.return_value.first.return_value = None
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
 
     response = client.post(
         "/api/logs/ingest",
@@ -76,6 +78,7 @@ def test_ingest_info_not_queued():
     app.dependency_overrides[_authenticate_project] = lambda: _override_project_auth()
     mock_db = MagicMock()
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
 
     response = client.post(
         "/api/logs/ingest",
@@ -95,6 +98,7 @@ def test_ingest_batch():
     app.dependency_overrides[_authenticate_project] = lambda: _override_project_auth()
     mock_db = MagicMock()
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
 
     response = client.post(
         "/api/logs/ingest",
@@ -120,6 +124,7 @@ def test_ingest_missing_token():
     app.dependency_overrides.clear()
     mock_db = MagicMock()
     app.dependency_overrides[get_session] = lambda: mock_db
+    app.dependency_overrides[get_data_session] = lambda: mock_db
 
     response = client.post(
         "/api/logs/ingest",

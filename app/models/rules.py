@@ -12,6 +12,7 @@ class BusinessRule(Base):
 
     id = Column(String(36), primary_key=True)
     org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    product_id = Column(String(36), ForeignKey("products.id"), nullable=True, index=True)
     repo_name = Column(String(255), nullable=False, index=True)
     rule_type = Column(String(20), nullable=False, index=True)  # calculation | validation | permission | integration | conditional
     title = Column(String(500), nullable=False)

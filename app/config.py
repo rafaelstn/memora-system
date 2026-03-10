@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # CORS origins (comma-separated string from env var CORS_ORIGINS)
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
+    # Master admin (plan management)
+    master_admin_email: str = ""
+
     app_env: str = "development"
     log_level: str = "info"
 

@@ -16,12 +16,15 @@ class HybridSearch:
         self._db = db
         self._embedder = Embedder()
 
-    def semantic_search(self, query: str, repo_name: str, top_k: int = 10, org_id: str | None = None) -> list[dict]:
+    def semantic_search(self, query: str, repo_name: str, top_k: int = 10, org_id: str | None = None, product_id: str | None = None) -> list[dict]:
         query_embedding = self._embedder.embed_text(query)
 
         where = "WHERE repo_name = :repo_name"
         params: dict = {"embedding": str(query_embedding), "repo_name": repo_name, "top_k": top_k}
-        if org_id:
+        if product_id:
+            where += " AND product_id = :product_id"
+            params["product_id"] = product_id
+        elif org_id:
             where += " AND org_id = :org_id"
             params["org_id"] = org_id
 
@@ -48,10 +51,17 @@ class HybridSearch:
             for r in rows
         ]
 
-    def keyword_search(self, query: str, repo_name: str, top_k: int = 10, org_id: str | None = None) -> list[dict]:
-        org_filter = "AND org_id = :org_id" if org_id else ""
+    def keyword_search(self, query: str, repo_name: str, top_k: int = 10, org_id: str | None = None, product_id: str | None = None) -> list[dict]:
+        if product_id:
+            scope_filter = "AND product_id = :product_id"
+        elif org_id:
+            scope_filter = "AND org_id = :org_id"
+        else:
+            scope_filter = ""
         params: dict = {"query": query, "repo_name": repo_name, "top_k": top_k}
-        if org_id:
+        if product_id:
+            params["product_id"] = product_id
+        elif org_id:
             params["org_id"] = org_id
 
         sql = text(f"""
@@ -63,7 +73,7 @@ class HybridSearch:
                    ) AS score
             FROM code_chunks
             WHERE repo_name = :repo_name
-              {org_filter}
+              {scope_filter}
               AND (
                   to_tsvector('portuguese', content) @@ plainto_tsquery('portuguese', :query)
                   OR to_tsvector('portuguese', chunk_name) @@ plainto_tsquery('portuguese', :query)
@@ -86,9 +96,9 @@ class HybridSearch:
             for r in rows
         ]
 
-    def search(self, query: str, repo_name: str, top_k: int = 5, org_id: str | None = None) -> list[dict]:
-        semantic_results = self.semantic_search(query, repo_name, top_k=top_k * 3, org_id=org_id)
-        keyword_results = self.keyword_search(query, repo_name, top_k=top_k * 3, org_id=org_id)
+    def search(self, query: str, repo_name: str, top_k: int = 5, org_id: str | None = None, product_id: str | None = None) -> list[dict]:
+        semantic_results = self.semantic_search(query, repo_name, top_k=top_k * 3, org_id=org_id, product_id=product_id)
+        keyword_results = self.keyword_search(query, repo_name, top_k=top_k * 3, org_id=org_id, product_id=product_id)
 
         rrf_scores: dict[str, float] = defaultdict(float)
         chunk_data: dict[str, dict] = {}
@@ -128,6 +138,7 @@ def search_chunks(
     repo_name: str,
     max_results: int = 5,
     org_id: str | None = None,
+    product_id: str | None = None,
 ) -> list[dict]:
     searcher = HybridSearch(db)
-    return searcher.search(query, repo_name, top_k=max_results, org_id=org_id)
+    return searcher.search(query, repo_name, top_k=max_results, org_id=org_id, product_id=product_id)

@@ -54,10 +54,10 @@ class Assistant:
         context = "\n\n".join(parts)
         return f"{context}\n\nPergunta: {question}"
 
-    def ask(self, question: str, repo_name: str, max_chunks: int = 5, org_id: str | None = None) -> dict:
+    def ask(self, question: str, repo_name: str, max_chunks: int = 5, org_id: str | None = None, product_id: str | None = None) -> dict:
         start = time.time()
 
-        chunks = self._search.search(question, repo_name, top_k=max_chunks, org_id=org_id)
+        chunks = self._search.search(question, repo_name, top_k=max_chunks, org_id=org_id, product_id=product_id)
 
         if not chunks:
             return {
@@ -133,9 +133,10 @@ def ask_assistant(
     repo_name: str,
     max_chunks: int = 5,
     org_id: str | None = None,
+    product_id: str | None = None,
 ) -> dict:
     assistant = Assistant(db)
-    result = assistant.ask(question, repo_name, max_chunks, org_id=org_id)
+    result = assistant.ask(question, repo_name, max_chunks, org_id=org_id, product_id=product_id)
     return {
         "answer": result["answer"],
         "sources": [

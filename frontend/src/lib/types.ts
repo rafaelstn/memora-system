@@ -1,5 +1,30 @@
 export type Role = "admin" | "dev" | "suporte";
 
+// --- Products ---
+
+export interface Product {
+  id: string;
+  org_id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductMember {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  role: Role;
+  created_at: string;
+}
+
+export interface ProductWithMembers extends Product {
+  members: ProductMember[];
+}
+
 export interface User {
   id: string;
   name: string;
@@ -678,6 +703,24 @@ export interface ExecutiveRealtimeMetrics {
   alerts_open: number;
   incidents_open: number;
   repos_indexed: number;
+}
+
+// --- Executive History ---
+
+export interface ExecutiveWeeklySnapshot {
+  id: string;
+  org_id: string;
+  product_id: string | null;
+  week_start: string;
+  week_end: string;
+  security_score_avg: number;
+  error_alert_count: number;
+  support_question_count: number;
+  code_review_score_avg: number;
+  prs_reviewed_count: number;
+  incident_resolution_avg_hours: number;
+  doc_coverage_pct: number;
+  created_at: string;
 }
 
 // --- Security Analyzer ---

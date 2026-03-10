@@ -1,4 +1,5 @@
 import logging
+import sys
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -14,13 +15,25 @@ def _get_fernet() -> Fernet:
     if _fernet is None:
         key = settings.llm_encryption_key
         if not key:
-            raise ValueError(
-                "LLM_ENCRYPTION_KEY nao esta configurada. "
-                "Gere uma chave com: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\" "
-                "e adicione ao .env"
+            msg = (
+                "\n\n"
+                "===== ERRO FATAL =====\n"
+                "LLM_ENCRYPTION_KEY nao esta configurada.\n"
+                "O sistema nao pode iniciar sem ela.\n"
+                "Gere uma chave com:\n"
+                "  python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"\n"
+                "e adicione ao .env\n"
+                "======================\n"
             )
+            logger.critical(msg)
+            raise SystemExit(msg)
         _fernet = Fernet(key.encode())
     return _fernet
+
+
+def validate_encryption_key():
+    """Valida que LLM_ENCRYPTION_KEY esta configurada. Chamar na inicializacao."""
+    _get_fernet()
 
 
 def encrypt_api_key(plain_key: str) -> str:

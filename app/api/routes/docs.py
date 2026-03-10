@@ -10,8 +10,9 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_session, require_role
+from app.api.deps import get_current_product, get_current_user, get_data_session, require_role
 from app.db.session import SessionLocal
+from app.models.product import Product
 from app.models.user import User
 
 router = APIRouter(dependencies=[Depends(require_role("admin", "dev"))])
@@ -66,6 +67,7 @@ def generate_docs(
     body: GenerateRequest,
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Dispara geracao de documentacao em background."""
     if body.doc_type not in ("readme", "onboarding_guide", "all"):
@@ -79,8 +81,9 @@ def generate_docs(
 @router.get("/docs/status/{repo_name}")
 def get_docs_status(
     repo_name: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Retorna status de geracao dos docs do repo."""
     rows = db.execute(text("""
@@ -104,8 +107,9 @@ def get_docs_status(
 @public_router.get("/docs/{repo_name}/readme")
 def get_readme(
     repo_name: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Retorna README gerado em markdown."""
     row = db.execute(text("""
@@ -133,8 +137,9 @@ def get_readme(
 @public_router.get("/docs/{repo_name}/onboarding")
 def get_onboarding(
     repo_name: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Retorna guia de onboarding em markdown."""
     row = db.execute(text("""
@@ -162,8 +167,9 @@ def get_onboarding(
 def push_readme_to_github(
     repo_name: str,
     body: PushToGitHubRequest,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(require_role("admin")),
+    product: Product = Depends(get_current_product),
 ):
     """Faz push do README gerado para o repositorio no GitHub."""
     # Busca README gerado
@@ -235,8 +241,9 @@ def push_readme_to_github(
 @public_router.get("/onboarding/{repo_name}/progress")
 def get_onboarding_progress(
     repo_name: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Retorna progresso de onboarding do usuario autenticado."""
     row = db.execute(text("""
@@ -273,8 +280,9 @@ def get_onboarding_progress(
 def update_onboarding_progress(
     repo_name: str,
     body: OnboardingStepRequest,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(get_current_user),
+    product: Product = Depends(get_current_product),
 ):
     """Marca step como concluido para o usuario autenticado."""
     # Busca guia de onboarding

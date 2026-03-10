@@ -8,11 +8,12 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_session, require_role
+from app.api.deps import get_current_product, get_current_user, get_data_session, require_role
 from app.config import settings
 from app.core.code_reviewer import CodeReviewer
 from app.core.github_commenter import post_review_comment
 from app.db.session import SessionLocal
+from app.models.product import Product
 from app.models.user import User
 
 router = APIRouter(dependencies=[Depends(require_role("admin", "dev"))])
@@ -76,8 +77,9 @@ def _run_review_bg(org_id: str, review_id: str):
 def create_manual_review(
     body: ManualReviewRequest,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     """Create a manual code review."""
     if not body.code.strip():
@@ -99,13 +101,13 @@ def create_manual_review(
     review_id = str(uuid.uuid4())
     db.execute(text("""
         INSERT INTO code_reviews
-            (id, org_id, source_type, submitted_by, code_snippet, language,
+            (id, product_id, source_type, submitted_by, code_snippet, language,
              status, custom_instructions, repo_id)
-        VALUES (:id, :org_id, 'manual', :submitted_by, :code, :language,
+        VALUES (:id, :product_id, 'manual', :submitted_by, :code, :language,
                 'pending', :custom_instructions, :repo_id)
     """), {
         "id": review_id,
-        "org_id": user.org_id,
+        "product_id": product.id,
         "submitted_by": user.id,
         "code": body.code,
         "language": body.language,
@@ -125,18 +127,19 @@ def list_reviews(
     source_type: str | None = Query(None),
     verdict: str | None = Query(None),
     page: int = Query(1, ge=1),
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
-    """List code reviews for the organization."""
+    """List code reviews for the product."""
     query = """
         SELECT id, source_type, pr_number, pr_title, pr_url, pr_author,
                status, overall_score, overall_verdict, summary,
                repo_id, language, github_comment_posted, created_at, updated_at
         FROM code_reviews
-        WHERE org_id = :org_id
+        WHERE product_id = :product_id
     """
-    params: dict = {"org_id": user.org_id}
+    params: dict = {"product_id": product.id}
 
     if repo_id:
         query += " AND repo_id = :repo_id"
@@ -177,11 +180,12 @@ def list_reviews(
 
 @router.get("/reviews/stats")
 def review_stats(
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     """Return review statistics."""
-    org_id = user.org_id
+    product_id = product.id
 
     stats = db.execute(text("""
         SELECT
@@ -190,15 +194,15 @@ def review_stats(
             COUNT(*) FILTER (WHERE overall_verdict IN ('approved', 'approved_with_warnings')) as approved_count,
             COUNT(*) FILTER (WHERE created_at > now() - interval '30 days') as this_month
         FROM code_reviews
-        WHERE org_id = :org_id AND status = 'completed'
-    """), {"org_id": org_id}).mappings().first()
+        WHERE product_id = :product_id AND status = 'completed'
+    """), {"product_id": product_id}).mappings().first()
 
     critical_count = db.execute(text("""
         SELECT COUNT(*) as cnt
         FROM review_findings f
         JOIN code_reviews r ON r.id = f.review_id
-        WHERE f.org_id = :org_id AND f.severity = 'critical' AND r.status = 'completed'
-    """), {"org_id": org_id}).mappings().first()
+        WHERE r.product_id = :product_id AND f.severity = 'critical' AND r.status = 'completed'
+    """), {"product_id": product_id}).mappings().first()
 
     # Weekly trend (last 8 weeks)
     weekly = db.execute(text("""
@@ -207,20 +211,20 @@ def review_stats(
             AVG(overall_score) as avg_score,
             COUNT(*) as count
         FROM code_reviews
-        WHERE org_id = :org_id AND status = 'completed'
+        WHERE product_id = :product_id AND status = 'completed'
               AND created_at > now() - interval '8 weeks'
         GROUP BY date_trunc('week', created_at)
         ORDER BY week
-    """), {"org_id": org_id}).mappings().all()
+    """), {"product_id": product_id}).mappings().all()
 
     # Findings by category
     by_category = db.execute(text("""
         SELECT f.category, COUNT(*) as count
         FROM review_findings f
         JOIN code_reviews r ON r.id = f.review_id
-        WHERE f.org_id = :org_id AND r.status = 'completed'
+        WHERE r.product_id = :product_id AND r.status = 'completed'
         GROUP BY f.category
-    """), {"org_id": org_id}).mappings().all()
+    """), {"product_id": product_id}).mappings().all()
 
     total = stats["total"] or 0
     approved = stats["approved_count"] or 0
@@ -246,13 +250,14 @@ def review_stats(
 @router.get("/reviews/{review_id}")
 def get_review(
     review_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     """Get review detail with all findings."""
     review = db.execute(
-        text("SELECT * FROM code_reviews WHERE id = :id AND org_id = :org_id"),
-        {"id": review_id, "org_id": user.org_id},
+        text("SELECT * FROM code_reviews WHERE id = :id AND product_id = :product_id"),
+        {"id": review_id, "product_id": product.id},
     ).mappings().first()
 
     if not review:
@@ -315,13 +320,14 @@ def get_review(
 @router.delete("/reviews/{review_id}")
 def delete_review(
     review_id: str,
-    db: Session = Depends(get_session),
+    db: Session = Depends(get_data_session),
     user: User = Depends(_get_user),
+    product: Product = Depends(get_current_product),
 ):
     """Delete a code review and its findings."""
     result = db.execute(
-        text("DELETE FROM code_reviews WHERE id = :id AND org_id = :org_id"),
-        {"id": review_id, "org_id": user.org_id},
+        text("DELETE FROM code_reviews WHERE id = :id AND product_id = :product_id"),
+        {"id": review_id, "product_id": product.id},
     )
     db.commit()
     if result.rowcount == 0:

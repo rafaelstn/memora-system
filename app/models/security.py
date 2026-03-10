@@ -12,6 +12,7 @@ class SecurityScan(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     org_id = Column(String, ForeignKey("organizations.id"), nullable=False)
+    product_id = Column(String, ForeignKey("products.id"), nullable=True, index=True)
     repo_name = Column(String, nullable=False)
     requested_by = Column(String, ForeignKey("users.id"), nullable=False)
     status = Column(String, default="pending")  # pending | analyzing | completed | failed

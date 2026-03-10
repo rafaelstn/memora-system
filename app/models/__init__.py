@@ -3,6 +3,7 @@ from app.models.conversation import Conversation, Invite, Message
 from app.models.github_integration import GitHubIntegration
 from app.models.knowledge import KnowledgeDocument, KnowledgeEntry, KnowledgeWiki
 from app.models.monitor import AlertWebhook, ErrorAlert, LogEntry, MonitoredProject
+from app.models.product import Product, ProductMembership
 from app.models.user import User
 
 __all__ = [
@@ -19,5 +20,7 @@ __all__ = [
     "LogEntry",
     "Message",
     "MonitoredProject",
+    "Product",
+    "ProductMembership",
     "User",
 ]

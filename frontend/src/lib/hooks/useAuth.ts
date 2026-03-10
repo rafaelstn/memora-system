@@ -16,6 +16,8 @@ interface AuthUser {
   github_connected: boolean;
   org_id: string;
   org_name: string | null;
+  org_mode: "saas" | "enterprise";
+  enterprise_setup_complete: boolean;
   onboarding_completed: boolean;
   onboarding_step: number;
 }

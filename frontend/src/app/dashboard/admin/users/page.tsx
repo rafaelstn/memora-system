@@ -14,7 +14,7 @@ import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import { RoleBadge, StatusBadge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
-import type { Role } from "@/lib/types";
+import type { Role, Product } from "@/lib/types";
 import {
   listUsers,
   updateUserRole,
@@ -22,6 +22,7 @@ import {
   listInvites,
   createInvite,
   revokeInviteApi,
+  listProducts,
 } from "@/lib/api";
 
 interface UserRow {
@@ -39,6 +40,7 @@ interface InviteRow {
   token: string;
   role: string;
   email?: string;
+  product_id?: string;
   created_at: string;
   expires_at: string;
   status: string;
@@ -50,23 +52,27 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<Role | "all">("all");
   const [search, setSearch] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("dev");
+  const [inviteProductId, setInviteProductId] = useState<string>("");
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [usersData, invitesData] = await Promise.all([
+      const [usersData, invitesData, productsData] = await Promise.all([
         listUsers(
           roleFilter !== "all" ? roleFilter : undefined,
           search || undefined,
         ),
         listInvites(),
+        listProducts().catch(() => []),
       ]);
       setUsers(usersData);
       setInvites(invitesData);
+      setProducts(productsData);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao carregar dados");
     } finally {
@@ -109,7 +115,7 @@ export default function UsersPage() {
   async function handleInvite() {
     setInviteLoading(true);
     try {
-      const result = await createInvite(inviteRole, inviteEmail || undefined);
+      const result = await createInvite(inviteRole, inviteEmail || undefined, inviteProductId || undefined);
       setGeneratedLink(result.invite_url);
       setInvites((prev) => [
         {
@@ -152,6 +158,7 @@ export default function UsersPage() {
     setInviteOpen(false);
     setInviteEmail("");
     setInviteRole("dev");
+    setInviteProductId("");
     setGeneratedLink(null);
   }
 
@@ -384,6 +391,28 @@ export default function UsersPage() {
                 <option value="suporte">Suporte</option>
               </select>
             </div>
+            {products.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Produto (opcional)
+                </label>
+                <select
+                  value={inviteProductId}
+                  onChange={(e) => setInviteProductId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-card-bg text-foreground"
+                >
+                  <option value="">Nenhum — acesso definido depois</option>
+                  {products.filter((p) => p.is_active).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted mt-1">
+                  O usuario sera automaticamente adicionado como membro do produto selecionado.
+                </p>
+              </div>
+            )}
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={closeInviteModal}

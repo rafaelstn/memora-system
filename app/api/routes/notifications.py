@@ -1,4 +1,4 @@
-"""Rotas de preferencias de notificacao e configuracao SMTP."""
+"""Rotas de preferencias de notificacao, configuracao SMTP, banners e digest."""
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -8,6 +8,7 @@ from app.api.deps import get_current_user, get_session, require_role
 from app.models.user import User
 
 router = APIRouter(prefix="/notifications")
+digest_router = APIRouter(prefix="/admin/digest")
 
 
 class NotificationPrefs(BaseModel):
@@ -122,3 +123,57 @@ def test_smtp(
     if success:
         return {"status": "ok", "message": f"Email de teste enviado para {user.email}"}
     raise HTTPException(500, "Falha ao enviar email de teste. Verifique a configuracao SMTP.")
+
+
+# --- Banners (proactive notifications) ---
+
+@router.get("/banners")
+def list_banners(
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Lista banners ativos para a org do usuario (admin/dev only)."""
+    if user.role not in ("admin", "dev"):
+        return []
+    try:
+        from app.core.proactive_notifier import get_active_banners
+        return get_active_banners(db, user.org_id)
+    except Exception:
+        return []
+
+
+@router.post("/banners/{notification_id}/dismiss")
+def dismiss_banner(
+    notification_id: int,
+    db: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Dispensa um banner (marca como resolvido)."""
+    if user.role not in ("admin", "dev"):
+        raise HTTPException(403, "Acesso restrito")
+    try:
+        from app.core.proactive_notifier import dismiss_banner as do_dismiss
+        ok = do_dismiss(db, notification_id, user.org_id)
+        if not ok:
+            raise HTTPException(404, "Notificacao nao encontrada")
+        return {"status": "dismissed"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+# --- Weekly Digest (admin only) ---
+
+@digest_router.post("/send-now")
+def send_digest_now(
+    db: Session = Depends(get_session),
+    user: User = Depends(require_role("admin")),
+):
+    """Envia o digest semanal imediatamente para a org do admin."""
+    try:
+        from app.core.digest_generator import send_weekly_digest
+        status = send_weekly_digest(db, user.org_id)
+        return {"status": status, "message": "Digest enviado" if status == "sent" else f"Status: {status}"}
+    except Exception as e:
+        raise HTTPException(500, f"Erro ao enviar digest: {e}")

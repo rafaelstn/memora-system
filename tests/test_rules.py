@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_current_user, get_session
+from app.api.deps import get_current_product, get_current_user, get_data_session, get_session
 from app.main import app
-from tests.conftest import _fake_user
+from tests.conftest import _fake_product, _fake_user
 
 
 # --- Fixtures ---
@@ -27,6 +27,8 @@ def admin_client():
     fake = _fake_user("admin")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -36,6 +38,8 @@ def dev_client():
     fake = _fake_user("dev")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -45,6 +49,8 @@ def suporte_client():
     fake = _fake_user("suporte")
     app.dependency_overrides[get_current_user] = lambda: fake
     app.dependency_overrides[get_session] = _mock_session
+    app.dependency_overrides[get_data_session] = _mock_session
+    app.dependency_overrides[get_current_product] = _fake_product
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -138,6 +144,7 @@ def test_get_rule_detail(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/rules/rule-001")
     assert resp.status_code == 200
     data = resp.json()
@@ -228,6 +235,7 @@ def test_simulate_rule_success(admin_client):
             return session
 
         app.dependency_overrides[get_session] = mock_session
+        app.dependency_overrides[get_data_session] = mock_session
         resp = admin_client.post("/api/rules/rule-001/simulate", json={
             "input_values": {"tipo_cliente": "VIP", "valor_pedido": 800}
         })
@@ -269,6 +277,7 @@ def test_simulate_rule_suporte_allowed(suporte_client):
             return session
 
         app.dependency_overrides[get_session] = mock_session
+        app.dependency_overrides[get_data_session] = mock_session
         resp = suporte_client.post("/api/rules/rule-001/simulate", json={
             "input_values": {"valor": 100}
         })
@@ -301,6 +310,7 @@ def test_acknowledge_alert(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.patch("/api/rules/alerts/alert-001/acknowledge")
     assert resp.status_code == 404
 
@@ -532,6 +542,7 @@ def test_extract_status(admin_client):
         return session
 
     app.dependency_overrides[get_session] = mock_session
+    app.dependency_overrides[get_data_session] = mock_session
     resp = admin_client.get("/api/rules/extract/status/test-repo")
     assert resp.status_code == 200
     data = resp.json()
