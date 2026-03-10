@@ -15,7 +15,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       `connect-src 'self' ${apiUrl} https://*.supabase.co https://*.ngrok-free.dev https://*.ngrok.io`,
-      "img-src 'self' data:",
+      "img-src 'self' data: https://avatars.githubusercontent.com",
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",
       "frame-ancestors 'none'",
