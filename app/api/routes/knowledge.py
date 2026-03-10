@@ -891,7 +891,6 @@ def update_knowledge_settings(
         {"org_id": user.org_id},
     ).mappings().first()
     org_settings = dict(row["settings"] or {}) if row else {}
-    prev_knowledge = org_settings.get("knowledge", {})
 
     org_settings["knowledge"] = {
         "auto_wiki": payload.auto_wiki,
@@ -905,12 +904,12 @@ def update_knowledge_settings(
 
     # Trigger sync/wiki if enabled
     if payload.auto_sync or payload.auto_wiki:
-        background_tasks.add_task(_initial_auto_run, user.org_id, payload.auto_sync, payload.auto_wiki)
+        background_tasks.add_task(_initial_auto_run, user.org_id, payload.auto_sync)
 
     return org_settings["knowledge"]
 
 
-def _initial_auto_run(org_id: str, do_sync: bool, do_wiki: bool):
+def _initial_auto_run(org_id: str, do_sync: bool):
     """Run initial sync for all repos when auto features are first enabled.
     Wiki generation is now suggestion-based — admin must approve via UI."""
     db = SessionLocal()

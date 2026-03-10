@@ -454,15 +454,6 @@ export async function searchUsers(email: string) {
   }>>(`/api/users/search?email=${encodeURIComponent(email)}`);
 }
 
-export async function addUserByEmail(email: string, role: string) {
-  return apiFetch<{ success: boolean; user: { name: string; email: string; role: string } }>(
-    "/api/users/add-by-email",
-    {
-      method: "POST",
-      body: JSON.stringify({ email, role }),
-    },
-  );
-}
 
 // --- Monitor de Erros ---
 import type {
@@ -1128,7 +1119,7 @@ export async function getPublicPostmortem(token: string) {
 }
 
 // --- Impact Analysis ---
-import type { ImpactAnalysis, ImpactHistoryResponse, ImpactFinding } from "./types";
+import type { ImpactAnalysis, ImpactHistoryResponse } from "./types";
 
 export async function startImpactAnalysis(body: {
   change_description: string;
@@ -1145,12 +1136,6 @@ export async function getImpactAnalysis(id: string) {
   return apiFetch<ImpactAnalysis>(`/api/impact/${id}`);
 }
 
-export async function getImpactFindings(id: string, params?: { severity?: string; finding_type?: string }) {
-  const qs = new URLSearchParams();
-  if (params?.severity) qs.set("severity", params.severity);
-  if (params?.finding_type) qs.set("finding_type", params.finding_type);
-  return apiFetch<{ findings: ImpactFinding[] }>(`/api/impact/${id}/findings?${qs.toString()}`);
-}
 
 export async function listImpactHistory(params?: { repo_name?: string; page?: number }) {
   const qs = new URLSearchParams();
@@ -1200,7 +1185,6 @@ export function getExecutiveHistoryCsvUrl(period: "4w" | "3m" | "6m" = "4w"): st
 import type {
   SecurityScan,
   SecurityFinding,
-  DependencyAlert,
   SecurityStats,
   DASTScan,
   DASTFinding,
@@ -1224,9 +1208,6 @@ export async function getSecurityFindings(scanId: string, params?: { severity?: 
   return apiFetch<{ findings: SecurityFinding[] }>(`/api/security/scan/${scanId}/findings?${qs.toString()}`);
 }
 
-export async function getDependencyAlerts(scanId: string) {
-  return apiFetch<{ alerts: DependencyAlert[] }>(`/api/security/scan/${scanId}/dependencies`);
-}
 
 export async function listSecurityScans(params?: { repo_name?: string; page?: number }) {
   const qs = new URLSearchParams();

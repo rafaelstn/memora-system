@@ -11,8 +11,6 @@ from app.api.deps import get_current_user, get_session
 from app.config import settings
 from app.core.rate_limit import AUTH_LIMIT, REGISTER_LIMIT, limiter
 from app.core.refresh_tokens import (
-    create_refresh_token,
-    revoke_all_user_tokens,
     revoke_token as revoke_refresh_token,
     validate_and_rotate,
 )

@@ -1,5 +1,4 @@
 """Busca global que atravessa todos os modulos do Memora."""
-import asyncio
 import logging
 from datetime import datetime
 
