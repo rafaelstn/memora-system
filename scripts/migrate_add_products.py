@@ -58,6 +58,16 @@ def migrate():
 
         # 3. Adicionar product_id (nullable) nas tabelas existentes
         for table in TABLES_WITH_PRODUCT_ID:
+            # Verifica se a tabela existe
+            table_exists = conn.execute(text("""
+                SELECT 1 FROM information_schema.tables
+                WHERE table_name = :table AND table_schema = 'public'
+            """), {"table": table}).first()
+
+            if not table_exists:
+                print(f"  Tabela {table} nao existe, pulando.")
+                continue
+
             # Verifica se a coluna já existe
             exists = conn.execute(text("""
                 SELECT 1 FROM information_schema.columns
