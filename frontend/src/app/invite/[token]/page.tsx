@@ -53,7 +53,7 @@ export default function InvitePage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card-bg p-8" style={{ boxShadow: "var(--shadow-lg)" }}>
         <div className="flex items-center justify-center gap-2 mb-6">
-          <img src="/icon.png" alt="Memora" className="w-10 h-10 rounded-lg" />
+          <img src="/logo.png" alt="Memora" className="w-10 h-10 rounded-lg" />
           <span className="text-2xl font-bold">Memora</span>
         </div>
 
