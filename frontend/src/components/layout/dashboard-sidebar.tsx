@@ -30,6 +30,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { ProductSwitcher } from "@/components/products/ProductSwitcher";
 import { useState, useEffect } from "react";
 import { getIncidentStats } from "@/lib/api";
+import { UserProfilePanel } from "@/components/profile/UserProfilePanel";
 
 const navItems = [
   { href: "/dashboard", label: "Repositórios", icon: Database },
@@ -43,20 +44,21 @@ const navItems = [
 ];
 
 const adminItems = [
-  { href: "/dashboard/metrics", label: "Metricas", icon: BarChart3 },
+  { href: "/dashboard/metrics", label: "Métricas", icon: BarChart3 },
   { href: "/dashboard/executive", label: "Painel Executivo", icon: LineChart },
-  { href: "/dashboard/admin/users", label: "Usuarios", icon: Users },
+  { href: "/dashboard/admin/users", label: "Usuários", icon: Users },
   { href: "/dashboard/admin/produtos", label: "Produtos", icon: Package },
   { href: "/dashboard/admin/exportar", label: "Exportar Dados", icon: Download },
   { href: "/dashboard/admin/planos", label: "Planos", icon: Crown },
-  { href: "/dashboard/settings", label: "Configuracoes", icon: Settings },
+  { href: "/dashboard/settings", label: "Configurações", icon: Settings },
 ];
 
 export function DashboardSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const { user, signOut, isLoading } = useAuth();
+  const { user, signOut, isLoading, refreshUser } = useAuth();
   const [activeIncidents, setActiveIncidents] = useState(0);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     if (!user || !["admin", "dev"].includes(user.role)) return;
@@ -102,7 +104,7 @@ export function DashboardSidebar() {
       >
         {/* Logo */}
         <div className="flex h-14 items-center gap-3 border-b border-border px-4">
-          <img src="/logo.png" alt="Memora" className="h-8 w-8 shrink-0 rounded-lg dark:hidden" />
+          <img src="/logo-icon.png" alt="Memora" className="h-8 w-8 shrink-0 rounded-lg dark:hidden" />
           <img src="/logo-white.png" alt="Memora" className="h-8 w-8 shrink-0 rounded-lg hidden dark:block" />
           {!collapsed && <span className="text-lg font-bold tracking-tight">Memora</span>}
           <button
@@ -210,15 +212,29 @@ export function DashboardSidebar() {
           )}
 
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-surface text-accent-text text-sm font-semibold">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            {!collapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user.name}</p>
-                <RoleBadge role={user.role} />
-              </div>
-            )}
+            <button
+              onClick={() => setProfileOpen(true)}
+              className="flex items-center gap-3 flex-1 min-w-0 rounded-lg p-1 -m-1 hover:bg-hover transition-colors"
+              title="Meu Perfil"
+            >
+              {user.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.name}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-surface text-accent-text text-sm font-semibold">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              {!collapsed && (
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-medium truncate">{user.name}</p>
+                  <RoleBadge role={user.role} />
+                </div>
+              )}
+            </button>
             {!collapsed && (
               <button
                 onClick={signOut}
@@ -230,6 +246,14 @@ export function DashboardSidebar() {
             )}
           </div>
         </div>
+
+        {/* Profile panel */}
+        <UserProfilePanel
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          user={user}
+          onProfileUpdated={refreshUser}
+        />
       </aside>
     </>
   );

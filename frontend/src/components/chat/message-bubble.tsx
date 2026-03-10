@@ -76,7 +76,7 @@ export function MessageBubble({
   if (isLoading) {
     return (
       <div className="flex gap-3 px-4 py-3">
-        <img src="/logo.png" alt="Memora" className="h-8 w-8 rounded-full shrink-0 dark:hidden" />
+        <img src="/logo-icon.png" alt="Memora" className="h-8 w-8 rounded-full shrink-0 dark:hidden" />
         <img src="/logo-white.png" alt="Memora" className="h-8 w-8 rounded-full shrink-0 hidden dark:block" />
         <div className="flex items-center gap-1.5 py-2">
           <span className="loading-dot h-2 w-2 rounded-full bg-accent" />
@@ -129,7 +129,7 @@ export function MessageBubble({
   // Assistant message
   return (
     <div className="flex gap-3 px-4 py-3">
-      <img src="/logo.png" alt="Memora" className="h-8 w-8 rounded-full shrink-0 dark:hidden object-cover" />
+      <img src="/logo-icon.png" alt="Memora" className="h-8 w-8 rounded-full shrink-0 dark:hidden object-cover" />
       <img src="/logo-white.png" alt="Memora" className="h-8 w-8 rounded-full shrink-0 hidden dark:block object-cover" />
       <div className="min-w-0 max-w-[80%]">
         <div className="bg-card-bg border border-border rounded-2xl rounded-bl-sm px-4 py-3">

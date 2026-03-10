@@ -20,6 +20,7 @@ interface AuthUser {
   enterprise_setup_complete: boolean;
   onboarding_completed: boolean;
   onboarding_step: number;
+  created_at: string | null;
 }
 
 export function useAuth() {

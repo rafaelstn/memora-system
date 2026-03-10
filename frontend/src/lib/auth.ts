@@ -91,6 +91,7 @@ export async function fetchUserProfile(): Promise<{
   enterprise_setup_complete: boolean;
   onboarding_completed: boolean;
   onboarding_step: number;
+  created_at: string | null;
 } | null> {
   const token = await getAccessToken();
   if (!token) return null;

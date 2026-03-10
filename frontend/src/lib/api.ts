@@ -46,6 +46,22 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   return res.json();
 }
 
+// --- Profile ---
+
+export async function updateProfile(data: { name?: string; avatar_url?: string }) {
+  return apiFetch<Record<string, unknown>>("/api/auth/profile", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function changePassword(newPassword: string) {
+  return apiFetch<{ message: string }>("/api/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ new_password: newPassword }),
+  });
+}
+
 // --- Conversations ---
 import type { Conversation, Message } from "./types";
 

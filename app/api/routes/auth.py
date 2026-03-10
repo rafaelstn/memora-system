@@ -46,6 +46,7 @@ class UserResponse(BaseModel):
     enterprise_setup_complete: bool = True
     onboarding_completed: bool = True
     onboarding_step: int = 0
+    created_at: str | None = None
 
 
 class RefreshRequest(BaseModel):
@@ -133,6 +134,7 @@ def _user_response(user: User, db: Session | None = None) -> dict:
         "enterprise_setup_complete": enterprise_setup_complete,
         "onboarding_completed": onboarding_completed,
         "onboarding_step": onboarding_step,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 
 
@@ -268,6 +270,61 @@ def setup_alias(request: Request, body: RegisterRequest, db: Session = Depends(g
 @router.get("/auth/me", response_model=UserResponse)
 def me(user: User = Depends(get_current_user), db: Session = Depends(get_session)):
     return _user_response(user, db)
+
+
+class UpdateProfileRequest(BaseModel):
+    name: str | None = None
+    avatar_url: str | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    new_password: str
+
+
+@router.patch("/auth/profile", response_model=UserResponse)
+def update_profile(body: UpdateProfileRequest, db: Session = Depends(get_session), user: User = Depends(get_current_user)):
+    """Atualiza nome e/ou avatar do usuário logado."""
+    updates = {}
+    if body.name is not None:
+        name = body.name.strip()
+        if not name or len(name) > 255:
+            raise HTTPException(status_code=400, detail="Nome inválido")
+        updates["name"] = name
+    if body.avatar_url is not None:
+        if body.avatar_url and len(body.avatar_url) > 1024:
+            raise HTTPException(status_code=400, detail="URL do avatar muito longa")
+        updates["avatar_url"] = body.avatar_url or None
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+
+    set_clauses = ", ".join(f"{k} = :{k}" for k in updates)
+    updates["uid"] = user.id
+    db.execute(text(f"UPDATE users SET {set_clauses}, updated_at = now() WHERE id = :uid"), updates)
+    db.commit()
+    db.refresh(user)
+    return _user_response(user, db)
+
+
+@router.post("/auth/change-password")
+@limiter.limit(AUTH_LIMIT)
+def change_password(request: Request, body: ChangePasswordRequest, user: User = Depends(get_current_user)):
+    """Altera a senha do usuário via Supabase Admin API."""
+    password = body.new_password
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Senha deve ter no mínimo 6 caracteres")
+
+    url = f"{settings.supabase_url}/auth/v1/admin/users/{user.id}"
+    resp = httpx.put(
+        url,
+        headers=_supabase_admin_headers(),
+        json={"password": password},
+        timeout=10,
+    )
+    if resp.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Erro ao atualizar senha no Supabase Auth")
+
+    return {"message": "Senha alterada com sucesso"}
 
 
 @router.post("/auth/refresh")
