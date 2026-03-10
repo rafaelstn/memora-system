@@ -102,7 +102,8 @@ export function DashboardSidebar() {
       >
         {/* Logo */}
         <div className="flex h-14 items-center gap-3 border-b border-border px-4">
-          <img src="/logo.png" alt="Memora" className="h-8 w-8 shrink-0 rounded-lg" />
+          <img src="/logo.png" alt="Memora" className="h-8 w-8 shrink-0 rounded-lg dark:hidden" />
+          <img src="/logo-white.png" alt="Memora" className="h-8 w-8 shrink-0 rounded-lg hidden dark:block" />
           {!collapsed && <span className="text-lg font-bold tracking-tight">Memora</span>}
           <button
             onClick={() => setCollapsed(!collapsed)}
