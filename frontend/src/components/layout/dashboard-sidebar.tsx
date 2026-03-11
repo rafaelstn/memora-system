@@ -80,8 +80,7 @@ export function DashboardSidebar() {
         "max-lg:hidden lg:relative",
       )}>
         <div className="flex h-14 items-center gap-3 border-b border-border px-4">
-          <div className="h-8 w-8 rounded-lg bg-hover animate-pulse" />
-          <div className="h-5 w-20 rounded bg-hover animate-pulse" />
+          <div className="h-8 w-28 rounded bg-hover animate-pulse" />
         </div>
       </aside>
     );
@@ -104,9 +103,10 @@ export function DashboardSidebar() {
       >
         {/* Logo */}
         <div className="flex h-14 items-center gap-3 border-b border-border px-4">
-          <img src="/logo-icon.png" alt="Memora" className="h-8 w-8 shrink-0 rounded-lg dark:hidden" />
-          <img src="/logo-white.png" alt="Memora" className="h-8 w-8 shrink-0 rounded-lg hidden dark:block" />
-          {!collapsed && <span className="text-lg font-bold tracking-tight">Memora</span>}
+          {collapsed
+            ? <img src="/memora-favicon.png" alt="Memora" className="h-8 w-8 shrink-0" />
+            : <img src="/memora-logo.png" alt="Memora" className="h-8 w-auto shrink-0" />
+          }
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="ml-auto p-1.5 rounded-lg hover:bg-hover text-muted transition-colors"

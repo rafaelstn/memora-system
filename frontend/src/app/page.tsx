@@ -347,8 +347,7 @@ function LandingContent() {
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <Image src="/logo-white.png" alt="Memora" width={32} height={32} className="h-8 w-8" />
-            <span className="text-lg font-bold tracking-tight text-white">Memora</span>
+            <Image src="/memora-logo.png" alt="Memora" width={180} height={40} className="h-8 w-auto" />
           </div>
 
           <div className="hidden md:flex items-center gap-8">
@@ -800,8 +799,7 @@ function LandingContent() {
           <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
             <div className="flex flex-col items-center gap-2 sm:items-start">
               <div className="flex items-center gap-2">
-                <Image src="/logo-white.png" alt="Memora" width={24} height={24} className="h-6 w-6" />
-                <span className="text-sm font-semibold text-white">Memora</span>
+                <Image src="/memora-logo.png" alt="Memora" width={120} height={28} className="h-6 w-auto" />
               </div>
               <span className="text-xs text-slate-500">{t.footer.tagline}</span>
             </div>

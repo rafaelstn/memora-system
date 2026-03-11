@@ -43,8 +43,7 @@ export function ChatSidebar({
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2 mb-4">
-          <img src="/logo-icon.png" alt="Memora" className="h-8 w-8 rounded-lg dark:hidden" />
-          <img src="/logo-white.png" alt="Memora" className="h-8 w-8 rounded-lg hidden dark:block" />
+          <img src="/memora-favicon.png" alt="Memora" className="h-8 w-8" />
           <div>
             <p className="text-sm font-semibold text-foreground">Memora</p>
             <p className="text-xs text-muted">{repoName}</p>
