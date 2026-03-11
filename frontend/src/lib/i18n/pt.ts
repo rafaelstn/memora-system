@@ -1,184 +1,200 @@
 export const pt = {
-  // Nav
   nav: {
     product: "Produto",
     pricing: "Preços",
-    enterprise: "Enterprise",
-    customer: "Customer",
+    docs: "FAQ",
     cta: "Começar grátis",
   },
 
-  // Hero
   hero: {
-    badge: "Novo — Geração de Código com MCP agora disponível",
-    headline: "O sistema que se explica sozinho.",
+    headline: "Transforme seu codebase\nem respostas instantâneas.",
     subheadline:
-      "Memora transforma o codebase da sua empresa em inteligência acessível — para o suporte, para os devs e para o negócio.",
+      "Conecte seu repositório. Em minutos, qualquer pessoa do time pergunta sobre o software e recebe respostas com fontes no código. Devs, suporte e gestores.",
     ctaPrimary: "Começar trial de 7 dias",
     ctaSecondary: "Ver como funciona",
-    metric1: "↓ 73% menos interrupções ao dev",
-    metric2: "⚡ Erros detectados em < 5 min",
-    metric3: "📚 Onboarding em dias, não semanas",
   },
 
-  // Pain points
-  pains: {
-    title: "Você reconhece algum desses cenários?",
+  problem: {
+    title: "O conhecimento do software está sempre fragmentado.",
+    subtitle:
+      "Um dev sênior interrompido 10x ao dia perde 2h de trabalho profundo. Um onboarding de 6 semanas custa R$15k+ em salário sem entrega. Esses números se repetem todo mês.",
     items: [
       {
-        title: "O suporte para tudo para perguntar ao dev",
-        description: "Cada dúvida técnica vira uma interrupção no time de desenvolvimento.",
-        solution: "Assistente de Suporte",
+        title: "Onboarding lento",
+        description: "Devs novos levam 3 a 6 semanas para entender o sistema. Sem documentação atualizada, cada um monta seu mapa mental do zero.",
       },
       {
-        title: "Erros em produção são descobertos pelo cliente",
-        description: "Sem monitoramento inteligente, o cliente avisa antes do time.",
-        solution: "Monitor de Erros",
+        title: "Documentação desatualizada",
+        description: "A doc existe, mas ninguém confia. O código mudou 50 vezes desde a última atualização.",
       },
       {
-        title: "Dev sênior sai e o conhecimento vai junto",
-        description: "Decisões técnicas não documentadas se perdem com a rotatividade.",
-        solution: "Memória Técnica",
+        title: "Conhecimento concentrado",
+        description: "Só o dev original entende certas partes do código. Quando ele sai, o conhecimento vai junto.",
       },
       {
-        title: "Código de IA vai direto pra produção sem revisão",
-        description: "Copilot e ChatGPT geram código que ninguém revisa antes do merge.",
-        solution: "Revisão de Código IA",
+        title: "Suporte depende do dev",
+        description: "O time de suporte para o trabalho toda vez que precisa de uma resposta técnica. O dev é interrompido 5, 10, 15 vezes por dia.",
       },
       {
-        title: "Dev novo leva semanas pra ser produtivo",
-        description: "Sem documentação atualizada, o onboarding é lento e frustrante.",
-        solution: "Documentação + Onboarding",
-      },
-      {
-        title: "Ninguém sabe ao certo o que o sistema faz",
-        description: "Regras de negócio estão espalhadas no código sem mapeamento.",
-        solution: "Regras de Negócio",
+        title: "Mudanças arriscadas",
+        description: "Ninguém sabe o impacto real de uma alteração. Cada deploy é um exercício de fé.",
       },
     ],
   },
 
-  // Demo
-  demo: {
-    title: "Veja o Memora em ação",
-    subtitle: "11 módulos integrados para inteligência técnica completa",
-    modules: [
+  solution: {
+    title: "Não é mais um chatbot colado no código. É um sistema de inteligência técnica.",
+    description:
+      "Ferramentas comuns jogam seu código num LLM e torcem para a resposta fazer sentido. O Memora é diferente: ele decompõe o codebase em unidades semânticas, gera embeddings por função, e usa busca híbrida (vetorial + textual) para encontrar exatamente o trecho relevante. O resultado: respostas com fontes reais no código, não alucinações.",
+  },
+
+  howItWorks: {
+    title: "Como funciona",
+    subtitle: "Do repositório às respostas em menos de 10 minutos.",
+    steps: [
       {
-        id: "assistant",
-        label: "Assistente",
-        title: "Assistente de Suporte",
-        description:
-          "Pergunte qualquer coisa sobre o código em português. O assistente busca no codebase indexado e responde com fontes.",
+        number: "01",
+        title: "Conecte seu repositório",
+        description: "GitHub, GitLab ou qualquer repositório Git. Conexão segura via OAuth em 1 clique.",
       },
       {
-        id: "monitor",
-        label: "Monitor",
-        title: "Monitor de Erros",
-        description:
-          "Recebe logs em tempo real, analisa com IA e gera alertas com explicação em português, severidade e ações sugeridas.",
+        number: "02",
+        title: "Memora analisa o codebase",
+        description: "O sistema mapeia a estrutura, funções e dependências do código usando IA. Suporta repositórios de até 500MB.",
       },
       {
-        id: "memory",
-        label: "Memória",
+        number: "03",
+        title: "Constrói o sistema de conhecimento",
+        description: "Documentação, regras de negócio, dependências e wikis são gerados automaticamente.",
+      },
+      {
+        number: "04",
+        title: "Pergunte sobre o software",
+        description: "Chat em português, com fontes no código. Respostas em menos de 5 segundos para devs, suporte e liderança.",
+      },
+    ],
+  },
+
+  benefits: {
+    title: "Resultados que importam",
+    items: [
+      {
+        title: "Onboarding de semanas para dias",
+        description: "Dev novo pergunta ao Memora em vez de interromper o time. Primeiro commit em dias, não em 6 semanas.",
+      },
+      {
+        title: "Documentação sempre atualizada",
+        description: "Gerada por IA, alinhada com o código real. Nunca mais doc desatualizada.",
+      },
+      {
+        title: "Incidentes resolvidos em metade do tempo",
+        description: "Hipóteses de IA, timeline automática e post-mortem gerado instantaneamente.",
+      },
+      {
+        title: "Suporte que não interrompe o dev",
+        description: "O time de suporte encontra respostas sozinho. Menos interrupções, mais produtividade.",
+      },
+      {
+        title: "Impacto claro antes de cada mudança",
+        description: "Saiba o que pode quebrar antes de alterar uma linha de código.",
+      },
+      {
+        title: "Visibilidade executiva em 1 dashboard",
+        description: "Métricas consolidadas de saúde técnica para CTOs e tech leads.",
+      },
+    ],
+  },
+
+  useCases: {
+    title: "Para quem é o Memora",
+    items: [
+      {
+        title: "Times de engenharia",
+        description: "Documentação viva, code review automatizado e análise de impacto antes de cada PR.",
+      },
+      {
+        title: "Suporte técnico",
+        description: "Respostas instantâneas sobre o sistema sem depender do dev. Resolução mais rápida.",
+      },
+      {
+        title: "CTOs e tech leads",
+        description: "Visibilidade real sobre saúde do código, riscos técnicos e decisões de arquitetura.",
+      },
+      {
+        title: "Resposta a incidentes",
+        description: "War room com IA, hipóteses automáticas e histórico de incidentes similares.",
+      },
+      {
+        title: "Times de produto",
+        description: "Entenda regras de negócio e dependências antes de planejar a próxima feature.",
+      },
+    ],
+  },
+
+  modules: {
+    title: "7 módulos integrados",
+    subtitle: "Tudo que sua operação técnica precisa em uma plataforma.",
+    items: [
+      {
+        title: "Assistente",
+        description: "Chat inteligente que responde perguntas sobre o código com fontes e contexto.",
+      },
+      {
         title: "Memória Técnica",
-        description:
-          "Captura conhecimento de PRs, commits, issues e documentos. Gera wikis por componente automaticamente.",
+        description: "Captura conhecimento de PRs, commits, issues e documentos automaticamente.",
       },
       {
-        id: "review",
-        label: "Revisão",
-        title: "Revisão de Código IA",
-        description:
-          "5 análises paralelas (bugs, segurança, performance, consistência, padrões) com score e comentários no PR.",
+        title: "Documentação",
+        description: "Gera e mantém docs atualizadas a partir do código. Nunca mais doc obsoleta.",
       },
       {
-        id: "docs",
-        label: "Documentação",
-        title: "Documentação Automática",
-        description:
-          "Gera e mantém documentação atualizada a partir do código. Processa PDFs, DOCXs e markdowns existentes.",
-      },
-      {
-        id: "rules",
-        label: "Regras",
-        title: "Regras de Negócio",
-        description:
-          "Mapeia e extrai regras de negócio do código em linguagem natural. Identifica complexidade e dependências.",
-      },
-      {
-        id: "codegen",
-        label: "Geração",
-        title: "Geração de Código",
-        description:
-          "Gera código consistente com os padrões do projeto via MCP. Entende o contexto completo do codebase.",
-      },
-      {
-        id: "impact",
-        label: "Impacto",
         title: "Análise de Impacto",
-        description:
-          "Antes de mudar, saiba o que pode quebrar. Mapeia dependências e avalia risco de alterações.",
+        description: "Mapeia dependências e avalia o risco antes de qualquer alteração no código.",
       },
       {
-        id: "incidents",
-        label: "Incidentes",
         title: "Gestão de Incidentes",
-        description:
-          "War room com timeline, hipóteses de IA, incidentes similares e post-mortem gerado automaticamente.",
+        description: "War room, timeline, hipóteses de IA e post-mortem gerado automaticamente.",
       },
       {
-        id: "executive",
-        label: "Executivo",
+        title: "Monitor de Erros",
+        description: "Recebe logs em tempo real, analisa com IA e gera alertas com ações sugeridas.",
+      },
+      {
         title: "Painel Executivo",
-        description:
-          "Métricas semanais consolidadas: segurança, erros, suporte, reviews, incidentes. Trend analysis e CSV export.",
-      },
-      {
-        id: "security",
-        label: "Segurança",
-        title: "Análise de Segurança",
-        description:
-          "Scan estático e DAST com prevenção de SSRF. Audit log, rate limiting e refresh tokens.",
+        description: "Métricas semanais de segurança, erros, suporte e qualidade de código.",
       },
     ],
   },
 
-  // Pricing
   pricing: {
     title: "Preços simples, valor real",
     subtitle: "Comece com 7 dias grátis. Sem cartão de crédito.",
-    earlyAdopter: "Primeiros 3 clientes: R$397/mês — preço travado para sempre",
     plans: {
       pro: {
-        name: "PRO",
+        name: "Pro",
         badge: "Mais popular",
         price: "R$497",
         period: "/mês",
-        description:
-          "Infraestrutura Memora completa. Todos os módulos, multi-repositório, multi-usuário.",
+        description: "Todos os módulos. Multi-repositório. Usuários ilimitados.",
         features: [
-          "Todos os 11 módulos inclusos",
+          "Todos os 7 módulos inclusos",
           "Até 50 repositórios",
           "Usuários ilimitados",
           "Suporte por email",
-          "Atualizações automáticas",
           "7 dias de trial grátis",
         ],
         cta: "Começar trial de 7 dias",
-        note: "Sem cartão de crédito no trial",
-        roi: "1 hora de dev sênior economizada por dia já paga o plano",
+        roi: "Dev sênior custa ~R$150/hora. Economize 1h/dia = R$3.300/mês. O plano se paga 6x.",
       },
       enterprise: {
         name: "Enterprise",
-        badge: "Segurança máxima",
+        badge: "Infra própria",
         price: "R$1.497",
         period: "/mês",
-        description:
-          "Banco de dados na sua infraestrutura. Compliance total, dados nunca saem do seu ambiente.",
+        description: "Banco de dados na sua infraestrutura. Compliance e LGPD total.",
         features: [
-          "Tudo do PRO",
+          "Tudo do Pro",
           "Banco de dados próprio",
-          "SSO (em breve)",
           "SLA dedicado",
           "Suporte prioritário",
           "LGPD on-premise",
@@ -186,97 +202,52 @@ export const pt = {
         ],
         cta: "Falar com a equipe",
       },
-      customer: {
-        name: "Customer",
-        badge: "Sob medida",
-        price: "Entre em contato",
-        period: "",
-        description:
-          "Implementação personalizada da inteligência técnica na operação da sua empresa.",
-        features: [
-          "Consultoria de implementação",
-          "Módulos personalizados",
-          "Integração com sistemas existentes",
-          "Treinamento do time",
-          "Suporte dedicado",
-          "SLA customizado",
-        ],
-        cta: "Falar com a equipe",
-      },
     },
   },
 
-  // FAQ
   faq: {
     title: "Perguntas frequentes",
     items: [
       {
         q: "O que é o trial de 7 dias?",
-        a: "Você tem acesso completo a todos os módulos do plano PRO durante 7 dias, sem precisar cadastrar cartão de crédito. Se gostar, é só assinar. Se não, seus dados são removidos automaticamente.",
+        a: "Acesso completo a todos os módulos do plano Pro durante 7 dias, sem cartão de crédito. Se gostar, é só assinar. Se não, seus dados são removidos automaticamente.",
       },
       {
         q: "Meu código fica armazenado onde?",
-        a: "No plano PRO, o código é indexado e armazenado de forma segura no Supabase (PostgreSQL gerenciado com criptografia em repouso). No Enterprise, os dados ficam 100% na sua infraestrutura.",
+        a: "No Pro, no Supabase (PostgreSQL gerenciado) com criptografia em repouso. No Enterprise, 100% na sua infraestrutura. Os dados nunca saem do seu ambiente.",
       },
       {
-        q: "Qual a diferença entre PRO e Enterprise?",
-        a: "O PRO usa a infraestrutura gerenciada do Memora. O Enterprise conecta ao banco de dados da sua empresa — os dados operacionais nunca saem do seu ambiente. Ideal para compliance e LGPD.",
+        q: "Funciona com qualquer linguagem?",
+        a: "Sim. Indexa qualquer repositório Git. Análise otimizada para Python, mas funciona com JavaScript, TypeScript, Java, Go, Ruby e outras.",
       },
       {
-        q: "Preciso de conhecimento técnico para instalar?",
-        a: "Não. O onboarding guiado leva menos de 10 minutos: criar conta, configurar o LLM provider, conectar o GitHub e indexar o primeiro repositório. Tudo via interface web.",
-      },
-      {
-        q: "Funciona com qualquer linguagem de programação?",
-        a: "Sim. O Memora indexa qualquer repositório Git. A análise AST é otimizada para Python, mas o sistema funciona com JavaScript, TypeScript, Java, Go, Ruby e outras linguagens.",
-      },
-      {
-        q: "O que é o plano Customer?",
-        a: "É uma implementação personalizada onde a Orbitalis adapta o Memora à operação da sua empresa: módulos customizados, integração com sistemas existentes, treinamento e suporte dedicado.",
+        q: "Preciso de conhecimento técnico para configurar?",
+        a: "Não. Onboarding guiado em menos de 10 minutos: criar conta, configurar IA, conectar GitHub e indexar o primeiro repositório. Tudo via interface web.",
       },
       {
         q: "Posso cancelar quando quiser?",
-        a: "Sim. Não há fidelidade. Você pode cancelar a qualquer momento e seus dados serão removidos em até 30 dias (ou imediatamente, se preferir).",
+        a: "Sim. Sem fidelidade, sem multa. Cancele a qualquer momento e seus dados são removidos em até 30 dias.",
       },
       {
-        q: "Quais LLMs o Memora suporta?",
-        a: "OpenAI (GPT-4o, GPT-4-turbo), Anthropic (Claude), Google (Gemini), Groq (Llama, Mixtral) e Ollama (modelos locais). Você escolhe o provider e modelo por organização.",
+        q: "Quais IAs o Memora suporta?",
+        a: "OpenAI (GPT-4o), Anthropic (Claude), Google (Gemini), Groq e Ollama (modelos locais). Você escolhe o provider e modelo por organização.",
       },
     ],
   },
 
-  // Final CTA
-  cta: {
-    headline: "Seu sistema está pronto para se explicar sozinho.",
-    subheadline: "Comece agora. Os primeiros 7 dias são por nossa conta.",
-    button: "Começar trial grátis",
+  finalCta: {
+    headline: "Cada semana sem Memora é conhecimento que sai pela porta com alguém.",
+    subheadline: "Setup em 10 minutos. 7 dias grátis com acesso total. Sem cartão de crédito.",
+    ctaPrimary: "Começar trial de 7 dias",
+    ctaSecondary: "Criar workspace agora",
   },
 
-  // Footer
   footer: {
-    tagline: "Inteligência Técnica Operacional",
-    rights: "© 2026 Memora. Todos os direitos reservados.",
+    tagline: "Inteligência técnica operacional para empresas de software.",
+    rights: "© 2026 Memora by Orbitalis. Todos os direitos reservados.",
     product: "Produto",
     pricing: "Preços",
-    enterprise: "Enterprise",
-    customer: "Customer",
   },
 };
 
-export type Translations = {
-  nav: { product: string; pricing: string; enterprise: string; customer: string; cta: string };
-  hero: { badge: string; headline: string; subheadline: string; ctaPrimary: string; ctaSecondary: string; metric1: string; metric2: string; metric3: string };
-  pains: { title: string; items: { title: string; description: string; solution: string }[] };
-  demo: { title: string; subtitle: string; modules: { id: string; label: string; title: string; description: string }[] };
-  pricing: {
-    title: string; subtitle: string; earlyAdopter: string;
-    plans: {
-      pro: { name: string; badge: string; price: string; period: string; description: string; features: string[]; cta: string; note: string; roi: string };
-      enterprise: { name: string; badge: string; price: string; period: string; description: string; features: string[]; cta: string };
-      customer: { name: string; badge: string; price: string; period: string; description: string; features: string[]; cta: string };
-    };
-  };
-  faq: { title: string; items: { q: string; a: string }[] };
-  cta: { headline: string; subheadline: string; button: string };
-  footer: { tagline: string; rights: string; product: string; pricing: string; enterprise: string; customer: string };
-};
+export type Translations = typeof pt;

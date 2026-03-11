@@ -1,266 +1,253 @@
 import type { Translations } from "./pt";
 
 export const en: Translations = {
-  // Nav
   nav: {
     product: "Product",
     pricing: "Pricing",
-    enterprise: "Enterprise",
-    customer: "Customer",
+    docs: "FAQ",
     cta: "Start free",
   },
 
-  // Hero
   hero: {
-    badge: "New — Code Generation with MCP now available",
-    headline: "The system that explains itself.",
+    headline: "Turn your codebase\ninto instant answers.",
     subheadline:
-      "Memora turns your company's codebase into accessible intelligence — for support, for devs, and for the business.",
+      "Connect your repository. In minutes, anyone on the team asks questions about the software and gets answers with code source references. Devs, support and managers.",
     ctaPrimary: "Start 7-day trial",
     ctaSecondary: "See how it works",
-    metric1: "↓ 73% fewer dev interruptions",
-    metric2: "⚡ Errors detected in < 5 min",
-    metric3: "📚 Onboarding in days, not weeks",
   },
 
-  // Pain points
-  pains: {
-    title: "Do you recognize any of these scenarios?",
+  problem: {
+    title: "Software knowledge is always fragmented.",
+    subtitle:
+      "A senior dev interrupted 10x a day loses 2h of deep work. A 6-week onboarding costs $3k+ in salary without delivery. These numbers repeat every month.",
     items: [
       {
-        title: "Support stops everything to ask the dev",
-        description: "Every technical question becomes a dev team interruption.",
-        solution: "Support Assistant",
+        title: "Slow onboarding",
+        description: "New developers take 3 to 6 weeks to understand the system. Without updated docs, everyone builds their mental map from scratch.",
       },
       {
-        title: "Production errors are discovered by the customer",
-        description: "Without smart monitoring, the customer reports before the team.",
-        solution: "Error Monitor",
+        title: "Outdated documentation",
+        description: "The docs exist, but nobody trusts them. The code changed 50 times since the last update.",
       },
       {
-        title: "Senior dev leaves and the knowledge goes with them",
-        description: "Undocumented technical decisions are lost with turnover.",
-        solution: "Technical Memory",
+        title: "Concentrated knowledge",
+        description: "Only the original developer understands certain parts of the code. When they leave, the knowledge leaves too.",
       },
       {
-        title: "AI code goes straight to production without review",
-        description: "Copilot and ChatGPT generate code nobody reviews before merging.",
-        solution: "AI Code Review",
+        title: "Support depends on devs",
+        description: "The support team stops working every time they need a technical answer. The dev is interrupted 5, 10, 15 times a day.",
       },
       {
-        title: "New dev takes weeks to become productive",
-        description: "Without updated docs, onboarding is slow and frustrating.",
-        solution: "Documentation + Onboarding",
-      },
-      {
-        title: "Nobody knows exactly what the system does",
-        description: "Business rules are scattered across the code without mapping.",
-        solution: "Business Rules",
+        title: "Risky changes",
+        description: "Nobody knows the real impact of a change. Every deploy is a leap of faith.",
       },
     ],
   },
 
-  // Demo
-  demo: {
-    title: "See Memora in action",
-    subtitle: "11 integrated modules for complete technical intelligence",
-    modules: [
+  solution: {
+    title: "Not another chatbot pasted on code. It's a technical intelligence system.",
+    description:
+      "Common tools throw your code into an LLM and hope the answer makes sense. Memora is different: it decomposes the codebase into semantic units, generates per-function embeddings, and uses hybrid search (vector + text) to find exactly the relevant snippet. The result: answers with real code sources, not hallucinations.",
+  },
+
+  howItWorks: {
+    title: "How it works",
+    subtitle: "From repository to answers in under 10 minutes.",
+    steps: [
       {
-        id: "assistant",
-        label: "Assistant",
-        title: "Support Assistant",
-        description:
-          "Ask anything about the code in plain language. The assistant searches the indexed codebase and responds with sources.",
+        number: "01",
+        title: "Connect your repository",
+        description: "GitHub, GitLab or any Git repository. Secure connection via OAuth in 1 click.",
       },
       {
-        id: "monitor",
-        label: "Monitor",
-        title: "Error Monitor",
-        description:
-          "Receives logs in real-time, analyzes with AI, and generates alerts with explanations, severity, and suggested actions.",
+        number: "02",
+        title: "Memora analyzes the codebase",
+        description: "The system maps the structure, functions and dependencies of the code using AI. Supports repositories up to 500MB.",
       },
       {
-        id: "memory",
-        label: "Memory",
+        number: "03",
+        title: "Builds the knowledge system",
+        description: "Documentation, business rules, dependencies and wikis are generated automatically.",
+      },
+      {
+        number: "04",
+        title: "Ask about your software",
+        description: "Chat in plain language, with code source references. Answers in under 5 seconds for devs, support and leadership.",
+      },
+    ],
+  },
+
+  benefits: {
+    title: "Outcomes that matter",
+    items: [
+      {
+        title: "Onboarding from weeks to days",
+        description: "New devs ask Memora instead of interrupting the team. First commit in days, not 6 weeks.",
+      },
+      {
+        title: "Always up-to-date documentation",
+        description: "AI-generated, aligned with the actual code. No more outdated docs.",
+      },
+      {
+        title: "Incidents resolved in half the time",
+        description: "AI hypotheses, automatic timeline and post-mortem generated instantly.",
+      },
+      {
+        title: "Support that doesn't interrupt devs",
+        description: "Support team finds answers on their own. Fewer interruptions, more productivity.",
+      },
+      {
+        title: "Clear impact before every change",
+        description: "Know what can break before changing a single line of code.",
+      },
+      {
+        title: "Executive visibility in 1 dashboard",
+        description: "Consolidated technical health metrics for CTOs and tech leads.",
+      },
+    ],
+  },
+
+  useCases: {
+    title: "Who is Memora for",
+    items: [
+      {
+        title: "Engineering teams",
+        description: "Living documentation, automated code review and impact analysis before every PR.",
+      },
+      {
+        title: "Technical support",
+        description: "Instant answers about the system without depending on devs. Faster resolution.",
+      },
+      {
+        title: "CTOs and tech leads",
+        description: "Real visibility into code health, technical risks and architecture decisions.",
+      },
+      {
+        title: "Incident response",
+        description: "AI-powered war room, automatic hypotheses and similar incident history.",
+      },
+      {
+        title: "Product teams",
+        description: "Understand business rules and dependencies before planning the next feature.",
+      },
+    ],
+  },
+
+  modules: {
+    title: "7 integrated modules",
+    subtitle: "Everything your technical operation needs in one platform.",
+    items: [
+      {
+        title: "Assistant",
+        description: "Smart chat that answers code questions with sources and context.",
+      },
+      {
         title: "Technical Memory",
-        description:
-          "Captures knowledge from PRs, commits, issues, and documents. Generates per-component wikis automatically.",
+        description: "Automatically captures knowledge from PRs, commits, issues and documents.",
       },
       {
-        id: "review",
-        label: "Review",
-        title: "AI Code Review",
-        description:
-          "5 parallel analyses (bugs, security, performance, consistency, patterns) with score and PR comments.",
+        title: "Documentation",
+        description: "Generates and maintains updated docs from code. No more obsolete docs.",
       },
       {
-        id: "docs",
-        label: "Docs",
-        title: "Auto Documentation",
-        description:
-          "Generates and maintains updated documentation from code. Processes existing PDFs, DOCXs, and markdowns.",
-      },
-      {
-        id: "rules",
-        label: "Rules",
-        title: "Business Rules",
-        description:
-          "Maps and extracts business rules from code in natural language. Identifies complexity and dependencies.",
-      },
-      {
-        id: "codegen",
-        label: "CodeGen",
-        title: "Code Generation",
-        description:
-          "Generates code consistent with project patterns via MCP. Understands the full codebase context.",
-      },
-      {
-        id: "impact",
-        label: "Impact",
         title: "Impact Analysis",
-        description:
-          "Before changing, know what can break. Maps dependencies and assesses change risk.",
+        description: "Maps dependencies and assesses risk before any code change.",
       },
       {
-        id: "incidents",
-        label: "Incidents",
         title: "Incident Management",
-        description:
-          "War room with timeline, AI hypotheses, similar incidents, and auto-generated post-mortem.",
+        description: "War room, timeline, AI hypotheses and automatically generated post-mortem.",
       },
       {
-        id: "executive",
-        label: "Executive",
+        title: "Error Monitor",
+        description: "Receives logs in real-time, analyzes with AI and generates alerts with suggested actions.",
+      },
+      {
         title: "Executive Dashboard",
-        description:
-          "Consolidated weekly metrics: security, errors, support, reviews, incidents. Trend analysis and CSV export.",
-      },
-      {
-        id: "security",
-        label: "Security",
-        title: "Security Analysis",
-        description:
-          "Static and DAST scanning with SSRF prevention. Audit log, rate limiting, and refresh tokens.",
+        description: "Weekly metrics for security, errors, support and code quality.",
       },
     ],
   },
 
-  // Pricing
   pricing: {
     title: "Simple pricing, real value",
     subtitle: "Start with 7 free days. No credit card required.",
-    earlyAdopter: "First 3 customers: $97/mo — price locked forever",
     plans: {
       pro: {
-        name: "PRO",
+        name: "Pro",
         badge: "Most popular",
         price: "$97",
         period: "/mo",
-        description:
-          "Full Memora infrastructure. All modules, multi-repo, multi-user.",
+        description: "All modules. Multi-repo. Unlimited users.",
         features: [
-          "All 11 modules included",
+          "All 7 modules included",
           "Up to 50 repositories",
           "Unlimited users",
           "Email support",
-          "Automatic updates",
           "7-day free trial",
         ],
         cta: "Start 7-day trial",
-        note: "No credit card for trial",
-        roi: "1 hour of senior dev time saved per day already pays for the plan",
+        roi: "Senior dev costs ~$75/hr. Save 1h/day = $1,650/mo. The plan pays for itself 17x.",
       },
       enterprise: {
         name: "Enterprise",
-        badge: "Maximum security",
+        badge: "Self-hosted",
         price: "$297",
         period: "/mo",
-        description:
-          "Database on your infrastructure. Full compliance, data never leaves your environment.",
+        description: "Database on your infrastructure. Full compliance and GDPR.",
         features: [
-          "Everything in PRO",
+          "Everything in Pro",
           "Self-hosted database",
-          "SSO (coming soon)",
           "Dedicated SLA",
           "Priority support",
           "GDPR on-premise",
           "Assisted setup",
         ],
-        cta: "Talk to the team",
-      },
-      customer: {
-        name: "Customer",
-        badge: "Tailored",
-        price: "Contact us",
-        period: "",
-        description:
-          "Custom implementation of technical intelligence for your company's operations.",
-        features: [
-          "Implementation consulting",
-          "Custom modules",
-          "Integration with existing systems",
-          "Team training",
-          "Dedicated support",
-          "Custom SLA",
-        ],
-        cta: "Talk to the team",
+        cta: "Talk to sales",
       },
     },
   },
 
-  // FAQ
   faq: {
     title: "Frequently asked questions",
     items: [
       {
         q: "What is the 7-day trial?",
-        a: "You get full access to all PRO plan modules for 7 days, no credit card required. If you like it, just subscribe. If not, your data is automatically removed.",
+        a: "Full access to all Pro plan modules for 7 days, no credit card required. If you like it, just subscribe. If not, your data is automatically removed.",
       },
       {
         q: "Where is my code stored?",
-        a: "On the PRO plan, code is indexed and securely stored in Supabase (managed PostgreSQL with encryption at rest). On Enterprise, data stays 100% on your infrastructure.",
+        a: "On Pro, in Supabase (managed PostgreSQL) with encryption at rest. On Enterprise, 100% on your infrastructure. Data never leaves your environment.",
       },
       {
-        q: "What's the difference between PRO and Enterprise?",
-        a: "PRO uses Memora's managed infrastructure. Enterprise connects to your company's database — operational data never leaves your environment. Ideal for compliance and GDPR.",
+        q: "Does it work with any language?",
+        a: "Yes. Indexes any Git repository. Analysis optimized for Python, but works with JavaScript, TypeScript, Java, Go, Ruby and others.",
       },
       {
-        q: "Do I need technical knowledge to install?",
-        a: "No. The guided onboarding takes less than 10 minutes: create account, configure LLM provider, connect GitHub, and index your first repository. All via web interface.",
-      },
-      {
-        q: "Does it work with any programming language?",
-        a: "Yes. Memora indexes any Git repository. AST analysis is optimized for Python, but the system works with JavaScript, TypeScript, Java, Go, Ruby, and other languages.",
-      },
-      {
-        q: "What is the Customer plan?",
-        a: "It's a custom implementation where Orbitalis adapts Memora to your company's operations: custom modules, integration with existing systems, training, and dedicated support.",
+        q: "Do I need technical knowledge to set up?",
+        a: "No. Guided onboarding in under 10 minutes: create account, configure AI, connect GitHub and index your first repository. All via web interface.",
       },
       {
         q: "Can I cancel anytime?",
-        a: "Yes. No lock-in. You can cancel at any time and your data will be removed within 30 days (or immediately, if you prefer).",
+        a: "Yes. No lock-in, no penalty. Cancel at any time and your data is removed within 30 days.",
       },
       {
-        q: "Which LLMs does Memora support?",
-        a: "OpenAI (GPT-4o, GPT-4-turbo), Anthropic (Claude), Google (Gemini), Groq (Llama, Mixtral), and Ollama (local models). You choose the provider and model per organization.",
+        q: "Which AIs does Memora support?",
+        a: "OpenAI (GPT-4o), Anthropic (Claude), Google (Gemini), Groq and Ollama (local models). You choose the provider and model per organization.",
       },
     ],
   },
 
-  // Final CTA
-  cta: {
-    headline: "Your system is ready to explain itself.",
-    subheadline: "Start now. The first 7 days are on us.",
-    button: "Start free trial",
+  finalCta: {
+    headline: "Every week without Memora is knowledge walking out the door.",
+    subheadline: "Setup in 10 minutes. 7 free days with full access. No credit card.",
+    ctaPrimary: "Start 7-day trial",
+    ctaSecondary: "Create workspace now",
   },
 
-  // Footer
   footer: {
-    tagline: "Operational Technical Intelligence",
-    rights: "© 2026 Memora. All rights reserved.",
+    tagline: "Operational technical intelligence for software companies.",
+    rights: "© 2026 Memora by Orbitalis. All rights reserved.",
     product: "Product",
     pricing: "Pricing",
-    enterprise: "Enterprise",
-    customer: "Customer",
   },
 } as const;
