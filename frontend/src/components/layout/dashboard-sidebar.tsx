@@ -105,7 +105,7 @@ export function DashboardSidebar() {
         <div className="flex h-14 items-center gap-3 border-b border-border px-4">
           {collapsed
             ? <img src="/memora-favicon.png" alt="Memora" className="h-8 w-8 shrink-0" />
-            : <img src="/memora-logo.png" alt="Memora" className="h-8 w-auto shrink-0" />
+            : <img src="/memora-logo-purple.png" alt="Memora" className="h-8 w-auto shrink-0" />
           }
           <button
             onClick={() => setCollapsed(!collapsed)}

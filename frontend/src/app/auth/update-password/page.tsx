@@ -44,7 +44,7 @@ export default function UpdatePasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card-bg p-8">
         <div className="flex items-center justify-center mb-8">
-          <img src="/memora-logo.png" alt="Memora" className="h-10 w-auto" />
+          <img src="/memora-logo-purple.png" alt="Memora" className="h-10 w-auto" />
         </div>
 
         <div className="flex items-center justify-center mb-6">

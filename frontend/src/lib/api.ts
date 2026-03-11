@@ -163,6 +163,7 @@ export async function askQuestionStream(
 
       const decoder = new TextDecoder();
       let buffer = "";
+      let receivedAnyEvent = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -179,6 +180,7 @@ export async function askQuestionStream(
 
           try {
             const event = JSON.parse(jsonStr);
+            receivedAnyEvent = true;
             if (event.type === "text") onText(event.content);
             else if (event.type === "sources") onSources(event.sources);
             else if (event.type === "done") onDone(event);
@@ -188,6 +190,11 @@ export async function askQuestionStream(
             // skip malformed JSON
           }
         }
+      }
+
+      // Stream closed without any SSE events — report as error
+      if (!receivedAnyEvent) {
+        onError("Resposta vazia do servidor. Tente novamente.");
       }
     })
     .catch((err) => {

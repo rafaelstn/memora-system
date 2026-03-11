@@ -124,7 +124,7 @@ export default function SignInPage() {
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card-bg p-8" style={{ boxShadow: "var(--shadow-lg)" }}>
         {/* Logo */}
         <div className="flex items-center justify-center mb-8">
-          <img src="/memora-logo.png" alt="Memora" className="h-10 w-auto" />
+          <img src="/memora-logo-purple.png" alt="Memora" className="h-10 w-auto" />
         </div>
 
 

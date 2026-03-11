@@ -21,6 +21,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+
 class StreamAskRequest(BaseModel):
     question: str
     repo_name: str
@@ -68,11 +69,12 @@ def _get_or_create_conversation(db: Session, user: User, repo_name: str, title: 
     conv_id = str(uuid.uuid4())
     db.execute(
         text("""
-            INSERT INTO conversations (id, product_id, repo_name, user_id, title)
-            VALUES (:id, :product_id, :repo_name, :user_id, :title)
+            INSERT INTO conversations (id, org_id, product_id, repo_name, user_id, title)
+            VALUES (:id, :org_id, :product_id, :repo_name, :user_id, :title)
         """),
         {
             "id": conv_id,
+            "org_id": user.org_id,
             "product_id": product_id,
             "repo_name": repo_name,
             "user_id": user.id,
@@ -163,15 +165,25 @@ def _has_llm_providers(db: Session, org_id: str) -> bool:
 
 
 def _generate_stream(question: str, repo_name: str, max_chunks: int, provider_id: str | None, db: Session, user: User, conversation_id: str | None = None, product_id: str | None = None):
-    assistant = Assistant(db)
-    chunks = assistant._search.search(question, repo_name, top_k=max_chunks, org_id=user.org_id, product_id=product_id)
+    try:
+        assistant = Assistant(db)
+        chunks = assistant._search.search(question, repo_name, top_k=max_chunks, org_id=user.org_id, product_id=product_id)
+    except Exception as e:
+        logger.error(f"Erro na busca: {e}", exc_info=True)
+        yield _sse_event({"type": "error", "message": f"Erro na busca: {e}"})
+        return
 
     # Search knowledge entries in parallel
     knowledge_results = _search_knowledge(db, question, product_id, top_k=3)
 
-    # Get or create conversation + save user message
-    conv_id = _get_or_create_conversation(db, user, repo_name, question[:100], conversation_id, product_id=product_id)
-    _save_message(db, conv_id, "user", question)
+    try:
+        # Get or create conversation + save user message
+        conv_id = _get_or_create_conversation(db, user, repo_name, question[:100], conversation_id, product_id=product_id)
+        _save_message(db, conv_id, "user", question)
+    except Exception as e:
+        logger.error(f"Erro ao salvar conversa: {e}", exc_info=True)
+        yield _sse_event({"type": "error", "message": f"Erro ao salvar conversa: {e}"})
+        return
 
     # Emit conversation_id so frontend can track it
     yield _sse_event({"type": "conversation", "conversation_id": conv_id})
@@ -324,6 +336,15 @@ def _generate_stream(question: str, repo_name: str, max_chunks: int, provider_id
         )
 
 
+def _safe_stream(generator):
+    """Wrap generator to catch unhandled exceptions and emit them as SSE errors."""
+    try:
+        yield from generator
+    except Exception as e:
+        logger.error(f"Erro nao tratado no stream: {e}", exc_info=True)
+        yield _sse_event({"type": "error", "message": f"Erro interno: {e}"})
+
+
 @router.post("/ask/stream")
 @limiter.limit(ASK_LIMIT)
 def ask_stream(
@@ -334,7 +355,7 @@ def ask_stream(
     product: Product = Depends(get_current_product),
 ):
     return StreamingResponse(
-        _generate_stream(body.question, body.repo_name, body.max_chunks, body.provider_id, db, user, body.conversation_id, product_id=product.id),
+        _safe_stream(_generate_stream(body.question, body.repo_name, body.max_chunks, body.provider_id, db, user, body.conversation_id, product_id=product.id)),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
